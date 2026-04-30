@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    container_name: vault-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vault
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  vault:
+    build:
+      context: ./services/vault
+    image: localhost/vault-system_vault:latest
+    container_name: vault-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:Postgres@postgres:5432/vault
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  rotation-worker:
+    build:
+      context: ./services/vault
+    image: localhost/vault-system_rotation-worker:latest
+    container_name: vault-rotation-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:Postgres@postgres:5432/vault
+    depends_on:
+      - postgres
+    command: python -m app.workers.rotation_worker
+
+  frontend:
+    build:
+      context: ./services/frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://192.168.240.133:8000/api/v1
+
+    image: localhost/vault-system_frontend:latest
+    container_name: vault-frontend
+    restart: unless-stopped
+
+    depends_on:
+      - vault
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://192.168.240.133:8000/api/v1
+
+  agent:
+    build:
+      context: ./services/agent
+    image: localhost/vault-system_agent:latest
+    container_name: site-a-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - vault
+    volumes:
+      - ./keys:/keys:ro
+
+volumes:
+  postgres_data:
