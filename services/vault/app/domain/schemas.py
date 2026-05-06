@@ -33,6 +33,12 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+class UserUpdate(BaseModel):
+    username: str | None = None
+    password: str | None = Field(default=None, min_length=12)
+    role: UserRole | None = None
+
+
 class AgentCreateRequest(BaseModel):
     name: str
     site: str
@@ -106,6 +112,10 @@ class CredentialOut(BaseModel):
 class AccessRequestCreate(BaseModel):
     credential_id: str
     reason: str = Field(min_length=5, max_length=2000)
+
+
+class DirectRevealRequest(BaseModel):
+    credential_id: str
 
 
 class AccessDecisionRequest(BaseModel):

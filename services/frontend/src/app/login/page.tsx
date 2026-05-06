@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { IconKey, IconLock, IconShield } from "../../components/Icons";
 import { apiRequest } from "../../lib/api";
 import { getSession, setSession } from "../../lib/auth";
 import type { AuthResponse } from "../../lib/types";
@@ -14,6 +15,7 @@ export default function LoginPage(): JSX.Element {
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState<"" | "error">("");
     const [loading, setLoading] = useState(false);
+    const [showValidation, setShowValidation] = useState(false);
 
     useEffect(() => {
         const session = getSession();
@@ -58,59 +60,85 @@ export default function LoginPage(): JSX.Element {
         }
     }
 
+    function handleInvalid(event: FormEvent<HTMLFormElement>): void {
+        event.preventDefault();
+        setShowValidation(true);
+        setMessage("Please complete the required fields.");
+        setMessageType("error");
+    }
+
     return (
         <main className="app-shell page">
-            <section className="card">
-                <h2>Sign In</h2>
-                <p className="lead">
-                    Authenticate to request tracked machine passwords or manage approval workflows.
-                </p>
-
-                <form className="stack" onSubmit={handleSubmit}>
-                    <label htmlFor="username">
-                        Username
-                        <input
-                            id="username"
-                            type="text"
-                            value={username}
-                            autoComplete="username"
-                            onChange={(event) => setUsername(event.target.value)}
-                            required
-                        />
-                    </label>
-                    <label htmlFor="password">
-                        Password
-                        <input
-                            id="password"
-                            type="password"
-                            value={password}
-                            autoComplete="current-password"
-                            onChange={(event) => setPassword(event.target.value)}
-                            required
-                        />
-                    </label>
-                    <button className="primary" type="submit" disabled={loading}>
-                        {loading ? "Signing In..." : "Sign In"}
-                    </button>
-                    <p className={`message ${messageType}`.trim()}>{message}</p>
-                </form>
-            </section>
-
-            <section className="grid-2">
+            <section className="auth-grid">
                 <article className="card">
-                    <h3>Seed Accounts</h3>
-                    <p className="lead">Change these passwords outside local testing.</p>
-                    <p>admin / ChangeMeStrong!</p>
-                    <p>engineer / EngineerChangeMe!123</p>
-                    <p>auditor / AuditorChangeMe!123</p>
+                    <div className="inline-title">
+                        <span className="brand-mark">
+                            <IconLock />
+                        </span>
+                        <div>
+                            <h2>Sign In</h2>
+                            <p className="lead">
+                                Authenticate to manage approval workflows and reveal tracked credentials.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form
+                        className="stack"
+                        data-validation={showValidation ? "true" : undefined}
+                        onInvalidCapture={handleInvalid}
+                        onSubmit={handleSubmit}
+                    >
+                        <label htmlFor="username">
+                            Username
+                            <input
+                                id="username"
+                                type="text"
+                                value={username}
+                                autoComplete="username"
+                                onChange={(event) => setUsername(event.target.value)}
+                                required
+                            />
+                        </label>
+                        <label htmlFor="password">
+                            Password
+                            <input
+                                id="password"
+                                type="password"
+                                value={password}
+                                autoComplete="current-password"
+                                onChange={(event) => setPassword(event.target.value)}
+                                required
+                            />
+                        </label>
+                        <button className="btn primary" type="submit" disabled={loading}>
+                            {loading ? "Signing In..." : "Sign In"}
+                        </button>
+                    </form>
+                    {message ? <div className={`toast ${messageType}`.trim()}>{message}</div> : null}
                 </article>
 
-                <article className="card">
-                    <h3>Security Baseline</h3>
-                    <p>AES-256-GCM envelope encryption for passwords.</p>
-                    <p>RBAC with JWT and agent bearer token auth.</p>
-                    <p>Full audit trail on access approvals, password syncs, and agent actions.</p>
-                </article>
+                <div className="stacked-cards">
+                    <article className="card">
+                        <div className="inline-title">
+                            <IconKey />
+                            <h3>Seed Accounts</h3>
+                        </div>
+                        <p className="lead">Rotate these credentials outside local testing.</p>
+                        <div className="chip mono">admin / ChangeMeStrong!</div>
+                        <div className="chip mono">engineer / EngineerChangeMe!123</div>
+                    </article>
+
+                    <article className="card">
+                        <div className="inline-title">
+                            <IconShield />
+                            <h3>Security Baseline</h3>
+                        </div>
+                        <p>AES-256-GCM envelope encryption for passwords.</p>
+                        <p>RBAC with JWT and agent bearer token auth.</p>
+                        <p>Full audit trail on approvals, reveals, and agent syncs.</p>
+                    </article>
+                </div>
             </section>
         </main>
     );

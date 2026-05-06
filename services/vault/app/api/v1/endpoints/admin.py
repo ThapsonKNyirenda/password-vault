@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ from app.domain.schemas import (
     TargetServerOut,
     UserCreate,
     UserOut,
+    UserUpdate,
 )
 from app.services.audit_service import record_audit
 from app.services.encryption_service import EnvelopeCipher
@@ -40,6 +41,8 @@ def create_user(
     existing = db.scalar(select(User).where(User.username == payload.username))
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
+    if payload.role not in {UserRole.ADMIN, UserRole.ENGINEER}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be admin or engineer")
 
     user = User(
         username=payload.username,
@@ -58,6 +61,117 @@ def create_user(
         resource_type="user",
         resource_id=str(user.id),
         details={"username": user.username, "role": user.role.value},
+    )
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.get("/users", response_model=list[UserOut])
+def list_users(
+    include_inactive: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.ADMIN)),
+) -> list[User]:
+    query = select(User).order_by(User.created_at.desc())
+    if not include_inactive:
+        query = query.where(User.active.is_(True))
+    return db.scalars(query).all()
+
+
+@router.patch("/users/{user_id}", response_model=UserOut)
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    details: dict[str, object] = {}
+
+    if payload.username and payload.username != user.username:
+        existing = db.scalar(select(User).where(User.username == payload.username))
+        if existing is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
+        details["username"] = {"from": user.username, "to": payload.username}
+        user.username = payload.username
+
+    if payload.role and payload.role != user.role:
+        if payload.role not in {UserRole.ADMIN, UserRole.ENGINEER}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be admin or engineer")
+        details["role"] = {"from": user.role.value, "to": payload.role.value}
+        user.role = payload.role
+
+    if payload.password:
+        user.password_hash = hash_password(payload.password)
+        details["password_reset"] = True
+
+    if not details:
+        return user
+
+    record_audit(
+        db,
+        actor_type="user",
+        actor_id=str(current_user.id),
+        action="update_user",
+        resource_type="user",
+        resource_id=str(user.id),
+        details=details,
+    )
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/users/{user_id}/deactivate", response_model=UserOut)
+def deactivate_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account")
+
+    user.active = False
+    record_audit(
+        db,
+        actor_type="user",
+        actor_id=str(current_user.id),
+        action="deactivate_user",
+        resource_type="user",
+        resource_id=str(user.id),
+        details={"username": user.username},
+    )
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/users/{user_id}/restore", response_model=UserOut)
+def restore_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.active = True
+    record_audit(
+        db,
+        actor_type="user",
+        actor_id=str(current_user.id),
+        action="restore_user",
+        resource_type="user",
+        resource_id=str(user.id),
+        details={"username": user.username},
     )
     db.commit()
     db.refresh(user)

@@ -42,19 +42,6 @@ def ensure_seed_identities() -> None:
                 )
             )
 
-        print("Checking auditor...")
-        auditor = db.scalar(select(User).where(User.username == "auditor"))
-        if auditor is None:
-            print("Adding auditor...")
-            db.add(
-                User(
-                    username="auditor",
-                    password_hash=hash_password("AuditorChangeMe!123"),
-                    role=UserRole.AUDITOR,
-                    active=True,
-                )
-            )
-
         if settings.bootstrap_agent_token:
             print("Checking agent...")
             existing_agent = db.scalar(select(Agent).where(Agent.name == settings.bootstrap_agent_name))

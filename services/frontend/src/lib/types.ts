@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "engineer" | "auditor";
+export type UserRole = "admin" | "engineer";
 export type ServerOS = "unix" | "windows";
 export type SyncSource = "admin" | "agent";
 
@@ -76,4 +76,18 @@ export interface Credential {
 export interface AgentCreateResponse {
   agent: Agent;
   api_token: string;
+}
+
+export interface User {
+  id: number;
+  username: string;
+  role: UserRole;
+  active: boolean;
+  created_at: string;
+}
+
+export interface UserUpdatePayload {
+  username?: string;
+  role?: UserRole;
+  password?: string;
 }

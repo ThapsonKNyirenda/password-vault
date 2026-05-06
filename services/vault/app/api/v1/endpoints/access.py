@@ -14,6 +14,7 @@ from app.domain.schemas import (
     AccessRequestCreate,
     AccessRequestOut,
     CredentialCatalogItem,
+    DirectRevealRequest,
     RevealCredentialResponse,
 )
 from app.services.audit_service import record_audit
@@ -21,6 +22,8 @@ from app.services.tracking_service import decrypt_credential
 
 
 router = APIRouter(prefix="/access-requests", tags=["access"])
+
+DIRECT_REVEAL_MINUTES = 5
 
 
 @router.get("/catalog", response_model=list[CredentialCatalogItem])
@@ -89,6 +92,61 @@ def create_access_request(
     db.commit()
     db.refresh(req)
     return req
+
+
+@router.post("/direct-reveal", response_model=RevealCredentialResponse)
+def direct_reveal_credential(
+    payload: DirectRevealRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ENGINEER)),
+) -> RevealCredentialResponse:
+    credential = db.get(Credential, payload.credential_id)
+    if credential is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Credential not found")
+
+    server = db.get(TargetServer, credential.server_id)
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+
+    plaintext = decrypt_credential(credential)
+    now = utcnow()
+    expires_at = now + timedelta(minutes=DIRECT_REVEAL_MINUTES)
+
+    req = AccessRequest(
+        requester_id=current_user.id,
+        credential_id=credential.id,
+        status=AccessStatus.FULFILLED,
+        reason="direct_reveal",
+        expires_at=expires_at,
+        approved_by=current_user.id,
+        approved_at=now,
+        revealed_at=now,
+    )
+    db.add(req)
+    db.flush()
+
+    record_audit(
+        db,
+        actor_type="user",
+        actor_id=str(current_user.id),
+        action="direct_reveal_credential",
+        resource_type="access_request",
+        resource_id=req.id,
+        details={
+            "credential_id": credential.id,
+            "server_id": server.id,
+            "expires_at": expires_at.isoformat(),
+        },
+    )
+    db.commit()
+
+    return RevealCredentialResponse(
+        credential_id=credential.id,
+        server_name=server.name,
+        managed_account=credential.managed_account,
+        expires_at=expires_at,
+        password=plaintext,
+    )
 
 
 @router.get("/mine", response_model=list[AccessRequestOut])
