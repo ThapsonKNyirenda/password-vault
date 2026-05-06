@@ -24,47 +24,23 @@ Follow these steps to synchronize a new Linux server with the Vault.
    - **Important**: The "Name" field must exactly match the output of the `hostname` command on the target VM.
 3. **Create Credential**: Register the managed account (e.g., `root`, `admin`) and provide the current password.
 
-### 2. Agent Module Installation
+### 2. Agent Module Installation & Configuration
 On the target server:
-1. **Transfer Sources**: Copy `pam_vault.go`, `pam_module.c`, and `go.mod` (if any) to the VM.
-2. **Build the Module**:
-   ```bash
-   go build -buildmode=c-shared -o pam_vault.so .
-   ```
-3. **Install the Binary**:
-   ```bash
-   sudo cp pam_vault.so /lib/x86_64-linux-gnu/security/
-   sudo chmod 644 /lib/x86_64-linux-gnu/security/pam_vault.so
-   ```
 
-### 3. Agent Configuration
-1. **Create Config Directory**:
+1. **Transfer Sources**: Copy `pam_vault.go`, `pam_module.c`, `go.mod`, and `setup.sh` to a directory (e.g., `~/pam-vault`) on the VM.
+2. **Run the Setup Script**:
    ```bash
-   sudo mkdir -p /etc/vault-system
+   cd ~/pam-vault
+   chmod +x setup.sh
+   sudo ./setup.sh
    ```
-2. **Create `hook.conf`**:
-   ```bash
-   sudo nano /etc/vault-system/hook.conf
-   ```
-   Add the following content:
-   ```ini
-   VAULT_URL=http://<vault-ip>:8000
-   AGENT_TOKEN=<your-agent-api-token>
-   ```
-3. **Secure the File**:
-   ```bash
-   sudo chmod 600 /etc/vault-system/hook.conf
-   ```
-
-### 4. Activate PAM Integration
-1. Edit the common password PAM configuration:
-   ```bash
-   sudo nano /etc/pam.d/common-password
-   ```
-2. Add the following line at the very end of the file:
-   ```text
-   password optional pam_vault.so
-   ```
+   The script will:
+   - Install system dependencies (`golang-go`, `libpam0g-dev`, `gcc`).
+   - Build the `pam_vault.so` module.
+   - Install it to the system security directory.
+   - Prompt for your **Vault URL** and **Agent Token**.
+   - Create and secure `/etc/vault-system/hook.conf`.
+   - Automatically activate the module in `/etc/pam.d/common-password`.
 
 ---
 
