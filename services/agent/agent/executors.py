@@ -1,11 +1,18 @@
 import json
+import logging
+import subprocess
 from pathlib import Path
+
+
+logger = logging.getLogger("local-agent")
 
 
 def load_password_source(path: str) -> dict[str, str]:
     source_path = Path(path)
     if not source_path.is_file():
-        raise FileNotFoundError(f"Password source file not found: {source_path}")
+        # During development, we might not have the source file yet
+        logger.warning(f"Password source file not found: {source_path}")
+        return {}
 
     raw = json.loads(source_path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
@@ -20,3 +27,47 @@ def load_password_source(path: str) -> dict[str, str]:
         passwords[credential_id] = password
 
     return passwords
+
+
+class UnixSSHExecutor:
+    def __init__(self, ssh_key_path: str):
+        self.ssh_key_path = ssh_key_path
+
+    def apply_password(
+        self,
+        host: str,
+        port: int,
+        connection_user: str,
+        managed_account: str,
+        new_password: str,
+    ) -> bool:
+        # Command to update password on the remote server
+        # We use chpasswd which reads from stdin
+        remote_cmd = "sudo chpasswd"
+        stdin_content = f"{managed_account}:{new_password}\n"
+
+        ssh_cmd = [
+            "ssh",
+            "-i",
+            self.ssh_key_path,
+            "-p",
+            str(port),
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=no",
+            f"{connection_user}@{host}",
+            remote_cmd,
+        ]
+
+        logger.info("Attempting to apply password for %s@%s via SSH", managed_account, host)
+        try:
+            subprocess.run(ssh_cmd, input=stdin_content, capture_output=True, text=True, check=True)
+            logger.info("Successfully updated password for %s on %s", managed_account, host)
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error("Failed to update password for %s on %s: %s", managed_account, host, e.stderr)
+            return False
+        except Exception as e:
+            logger.error("Unexpected error updating password for %s on %s: %s", managed_account, host, str(e))
+            return False

@@ -28,5 +28,10 @@ class VaultClient:
         response.raise_for_status()
         return response.json()
 
+    def reveal_credential(self, credential_id: str) -> dict[str, object]:
+        response = self._client.get(f"/api/v1/agent/credentials/{credential_id}/reveal")
+        response.raise_for_status()
+        return response.json()
+
     def close(self) -> None:
         self._client.close()

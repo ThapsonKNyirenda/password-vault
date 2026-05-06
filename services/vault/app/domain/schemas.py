@@ -176,6 +176,16 @@ class AgentCredentialSyncResponse(BaseModel):
     last_sync_source: SyncSource
 
 
+class AgentRevealCredentialResponse(BaseModel):
+    credential_id: str
+    server_host: str
+    server_port: int
+    managed_account: str
+    connection_username: str
+    connection_profile: str
+    password: str
+
+
 class AuditLogOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

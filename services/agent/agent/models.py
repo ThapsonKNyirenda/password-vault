@@ -20,3 +20,13 @@ class AgentCredentialSyncResponse(BaseModel):
     version: int
     last_synced_at: datetime
     last_sync_source: str
+
+
+class AgentRevealCredentialResponse(BaseModel):
+    credential_id: str
+    server_host: str
+    server_port: int
+    managed_account: str
+    connection_username: str
+    connection_profile: str
+    password: str

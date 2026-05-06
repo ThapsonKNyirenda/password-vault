@@ -13,6 +13,7 @@ class AgentSettings(BaseSettings):
     poll_interval_seconds: int = Field(default=10, alias="AGENT_POLL_INTERVAL_SECONDS")
     verify_tls: bool = Field(default=False, alias="AGENT_VERIFY_TLS")
     password_source_file: str = Field(default="/data/passwords.json", alias="AGENT_PASSWORD_SOURCE_FILE")
+    agent_unix_ssh_key_path: str = Field(default="/keys/id_ed25519", alias="AGENT_UNIX_SSH_KEY_PATH")
 
     model_config = SettingsConfigDict(
         env_file=".env",
