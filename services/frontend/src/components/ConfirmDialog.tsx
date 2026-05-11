@@ -1,7 +1,9 @@
 "use client";
 
-import type { ChangeEvent, FormEvent } from "react";
+import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
+
+import { IconExclamation, IconCheckCircle, IconShield } from "./Icons";
 
 export interface ConfirmDialogOption {
     label: string;
@@ -28,9 +30,10 @@ interface ConfirmDialogProps {
     description?: string;
     confirmLabel?: string;
     cancelLabel?: string;
-    tone?: "default" | "danger";
+    tone?: "default" | "danger" | "success";
     fields?: ConfirmDialogField[];
     busy?: boolean;
+    icon?: ReactNode;
     onConfirm: (values: Record<string, string>) => void;
     onClose: () => void;
 }
@@ -44,9 +47,16 @@ export function ConfirmDialog({
     tone = "default",
     fields = [],
     busy = false,
+    icon,
     onConfirm,
     onClose,
 }: ConfirmDialogProps): JSX.Element | null {
+    const getIcon = () => {
+        if (icon) return icon;
+        if (tone === "danger") return <IconExclamation className="icon-xl" style={{ color: "var(--danger)" }} />;
+        if (tone === "success") return <IconCheckCircle className="icon-xl" style={{ color: "var(--success)" }} />;
+        return <IconShield className="icon-xl" style={{ color: "var(--accent)" }} />;
+    };
     const [values, setValues] = useState<Record<string, string>>({});
     const [showValidation, setShowValidation] = useState(false);
 
@@ -85,8 +95,19 @@ export function ConfirmDialog({
                 onInvalidCapture={handleInvalid}
                 onSubmit={handleSubmit}
             >
-                <div className="modal-header">
-                    <div>
+                <div className="modal-header" style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
+                    <div style={{ 
+                        width: "48px", 
+                        height: "48px", 
+                        borderRadius: "12px", 
+                        background: tone === "danger" ? "var(--danger-dim)" : tone === "success" ? "var(--success-dim)" : "var(--accent-dim)",
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0
+                    }}>
+                        {getIcon()}
+                    </div>
+                    <div style={{ flex: 1 }}>
                         <h3>{title}</h3>
                         {description ? <p className="lead">{description}</p> : null}
                     </div>
@@ -137,11 +158,21 @@ export function ConfirmDialog({
                 ) : null}
 
                 <div className="modal-actions">
-                    <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
+                    <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
                         {cancelLabel}
                     </button>
-                    <button type="submit" className={`btn ${tone === "danger" ? "danger" : "primary"}`} disabled={busy}>
-                        {busy ? "Working..." : confirmLabel}
+                    <button 
+                        type="submit" 
+                        className={`btn ${tone === "danger" ? "btn-danger" : tone === "success" ? "btn-success" : "btn-primary"}`} 
+                        disabled={busy}
+                        style={{ minWidth: "120px" }}
+                    >
+                        {busy ? (
+                            <>
+                                <span className="spinner" style={{ width: "16px", height: "16px", borderWidth: "2px" }} />
+                                Working…
+                            </>
+                        ) : confirmLabel}
                     </button>
                 </div>
             </form>

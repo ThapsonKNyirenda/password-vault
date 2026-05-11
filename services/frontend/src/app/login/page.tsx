@@ -19,14 +19,8 @@ export default function LoginPage(): JSX.Element {
 
     useEffect(() => {
         const session = getSession();
-        if (!session) {
-            return;
-        }
-        if (session.role === "admin") {
-            router.replace("/admin");
-            return;
-        }
-        router.replace("/engineer");
+        if (!session) return;
+        router.replace(session.role === "admin" ? "/admin" : "/engineer");
     }, [router]);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -34,24 +28,13 @@ export default function LoginPage(): JSX.Element {
         setLoading(true);
         setMessage("Authenticating...");
         setMessageType("");
-
         try {
             const payload = await apiRequest<AuthResponse>("/auth/login", {
                 method: "POST",
                 body: JSON.stringify({ username, password }),
             });
-
-            setSession({
-                token: payload.access_token,
-                role: payload.role,
-                username: payload.username,
-            });
-
-            if (payload.role === "admin") {
-                router.replace("/admin");
-            } else {
-                router.replace("/engineer");
-            }
+            setSession({ token: payload.access_token, role: payload.role, username: payload.username });
+            router.replace(payload.role === "admin" ? "/admin" : "/engineer");
         } catch (error) {
             setMessage(error instanceof Error ? error.message : "Authentication failed");
             setMessageType("error");
@@ -68,78 +51,99 @@ export default function LoginPage(): JSX.Element {
     }
 
     return (
-        <main className="app-shell page">
-            <section className="auth-grid">
-                <article className="card">
-                    <div className="inline-title">
-                        <span className="brand-mark">
-                            <IconLock />
-                        </span>
-                        <div>
-                            <h2>Sign In</h2>
-                            <p className="lead">
-                                Authenticate to manage approval workflows and reveal tracked credentials.
-                            </p>
+        <div className="login-shell">
+            {/* ── Left: Login Form ── */}
+            <div className="login-left">
+                <div className="login-box">
+                    <div className="login-logo">
+                        <div className="login-logo-mark">
+                            <IconShield />
+                        </div>
+                        <div className="login-logo-text">
+                            <small>Vault + Agent</small>
+                            <strong>Control Plane</strong>
                         </div>
                     </div>
 
+                    <h1 className="login-heading">Welcome back</h1>
+                    <p className="login-sub">Sign in to manage credentials and access workflows.</p>
+
                     <form
-                        className="stack"
+                        className="form-stack"
                         data-validation={showValidation ? "true" : undefined}
                         onInvalidCapture={handleInvalid}
                         onSubmit={handleSubmit}
                     >
-                        <label htmlFor="username">
+                        <label htmlFor="login-username">
                             Username
                             <input
-                                id="username"
+                                id="login-username"
                                 type="text"
                                 value={username}
                                 autoComplete="username"
-                                onChange={(event) => setUsername(event.target.value)}
+                                placeholder="e.g. admin"
+                                onChange={(e) => setUsername(e.target.value)}
                                 required
                             />
                         </label>
-                        <label htmlFor="password">
+                        <label htmlFor="login-password">
                             Password
                             <input
-                                id="password"
+                                id="login-password"
                                 type="password"
                                 value={password}
                                 autoComplete="current-password"
-                                onChange={(event) => setPassword(event.target.value)}
+                                placeholder="••••••••••••"
+                                onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
                         </label>
-                        <button className="btn primary" type="submit" disabled={loading}>
-                            {loading ? "Signing In..." : "Sign In"}
+                        <button
+                            className="btn-primary"
+                            style={{ width: "100%", justifyContent: "center", padding: "0.7rem 1rem", marginTop: "0.25rem" }}
+                            type="submit"
+                            disabled={loading}
+                        >
+                            <IconLock className="icon-sm" />
+                            {loading ? "Signing In…" : "Sign In"}
                         </button>
                     </form>
-                    {message ? <div className={`toast ${messageType}`.trim()}>{message}</div> : null}
-                </article>
 
-                <div className="stacked-cards">
-                    <article className="card">
-                        <div className="inline-title">
-                            <IconKey />
-                            <h3>Seed Accounts</h3>
+                    {message ? (
+                        <div className={`toast ${messageType}`} style={{ marginTop: "1rem" }}>
+                            {message}
                         </div>
-                        <p className="lead">Rotate these credentials outside local testing.</p>
-                        <div className="chip mono">admin / ChangeMeStrong!</div>
-                        <div className="chip mono">engineer / EngineerChangeMe!123</div>
-                    </article>
-
-                    <article className="card">
-                        <div className="inline-title">
-                            <IconShield />
-                            <h3>Security Baseline</h3>
-                        </div>
-                        <p>AES-256-GCM envelope encryption for passwords.</p>
-                        <p>RBAC with JWT and agent bearer token auth.</p>
-                        <p>Full audit trail on approvals, reveals, and agent syncs.</p>
-                    </article>
+                    ) : null}
                 </div>
-            </section>
-        </main>
+            </div>
+
+            {/* ── Right: Info Panel ── */}
+            <div className="login-right">
+                <div className="info-card">
+                    <div className="info-card-title">
+                        <IconKey className="icon" style={{ color: "var(--accent)" }} />
+                        Seed Accounts
+                    </div>
+                    <p>Use these to get started. Rotate them immediately outside local testing.</p>
+                    <div className="creds-list">
+                        <div className="cred-item">admin / ChangeMeStrong!</div>
+                        <div className="cred-item">engineer / EngineerChangeMe!123</div>
+                    </div>
+                </div>
+
+                <div className="info-card">
+                    <div className="info-card-title">
+                        <IconShield className="icon" style={{ color: "var(--accent)" }} />
+                        Security Baseline
+                    </div>
+                    <div className="security-list">
+                        <div className="security-item">AES-256-GCM envelope encryption for all vault passwords.</div>
+                        <div className="security-item">RBAC enforced with short-lived JWT tokens.</div>
+                        <div className="security-item">Agent authentication via signed bearer tokens.</div>
+                        <div className="security-item">Full audit trail on approvals, reveals, and agent syncs.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as api_v1_router
-from app.bootstrap.seed import ensure_seed_identities, init_schema
+from app.bootstrap.seed import ensure_seed_identities
 from app.core.config import get_settings
 
 
@@ -29,9 +29,9 @@ app.include_router(api_v1_router)
 
 @app.on_event("startup")
 def startup() -> None:
-    print("starting init_schema")
-    init_schema()
-    print("finished init_schema, starting ensure_seed_identities")
+    # Migrations run via separate init container (make seed)
+    # to avoid race conditions with multiple workers
+    print("starting ensure_seed_identities")
     ensure_seed_identities()
     print("finished ensure_seed_identities")
 
