@@ -5,7 +5,18 @@ import { useRouter } from "next/navigation";
 
 import { Sidebar } from "../../components/Sidebar";
 import { ConfirmDialog, type ConfirmDialogField } from "../../components/ConfirmDialog";
-import { 
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "../../components/ui/table";
+import { Badge } from "../../components/ui/badge";
+import {
     IconEye, IconKey, IconRefresh, IconShield, IconClock,
     IconCheckCircle, IconActivity, IconServer, IconLock
 } from "../../components/Icons";
@@ -33,9 +44,9 @@ function formatCountdown(msRemaining: number): string {
 }
 
 const TABS = [
-    { id: "catalog",  label: "Credentials",    icon: <IconServer className="sidebar-link-icon" /> },
+    { id: "catalog", label: "Credentials", icon: <IconServer className="sidebar-link-icon" /> },
     { id: "activity", label: "Recent Activity", icon: <IconActivity className="sidebar-link-icon" /> },
-    { id: "reveal",   label: "Credential Output", icon: <IconLock className="sidebar-link-icon" /> },
+    { id: "reveal", label: "Credential Output", icon: <IconLock className="sidebar-link-icon" /> },
 ];
 
 export default function EngineerPage(): JSX.Element {
@@ -158,25 +169,25 @@ export default function EngineerPage(): JSX.Element {
                 <div className="page-shell">
                     {/* Stats */}
                     <div className="stats-grid">
-                        <StatCard 
-                            label="Tracked Credentials" 
+                        <StatCard
+                            label="Tracked Credentials"
                             value={catalog.length}
                             variant="accent"
                             icon={<IconServer className="icon-lg" />}
                         />
-                        <StatCard 
-                            label="Access Events" 
+                        <StatCard
+                            label="Access Events"
                             value={activity.length}
                             icon={<IconActivity className="icon-lg" />}
                         />
-                        <StatCard 
-                            label="Last Sync" 
+                        <StatCard
+                            label="Last Sync"
                             value={latestSync}
                             sub="Latest agent synchronization"
                             icon={<IconClock className="icon-lg" />}
                         />
-                        <StatCard 
-                            label="Reveal Window" 
+                        <StatCard
+                            label="Reveal Window"
                             value={revealData ? "Active" : "Idle"}
                             variant={revealData ? "success" : "default"}
                             sub={countdown ? `${countdown} remaining` : undefined}
@@ -184,130 +195,136 @@ export default function EngineerPage(): JSX.Element {
                         />
                     </div>
 
-                    {/* Tabs */}
-                    <div className="card">
-                        <div className="tabs">
-                            {TABS.map((t) => (
-                                <button key={t.id} type="button" className={`tab-btn ${activeTab === t.id ? "active" : ""}`} onClick={() => setActiveTab(t.id)}>
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    {TABS.map((t) => (
+                                        <Button key={t.id} variant={activeTab === t.id ? "default" : "ghost"} onClick={() => setActiveTab(t.id)}>
+                                            {t.icon} {t.label}
+                                        </Button>
+                                    ))}
+                                </div>
+                                <Button variant="ghost" size="sm" onClick={() => {
+                                    if (activeTab === 'catalog') loadCatalog();
+                                    else if (activeTab === 'activity') loadActivity();
+                                }}>
+                                    <IconRefresh className="w-4 h-4 mr-2" /> Refresh
+                                </Button>
+                            </div>
+                        </CardHeader>
 
-                        {/* Catalog */}
                         {activeTab === "catalog" && (
-                            <>
-                                <div className="card-header">
-                                    <div>
-                                        <div className="card-title">Tracked Passwords</div>
-                                        <div className="card-desc">Direct reveal grants a 5-minute access window.</div>
-                                    </div>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => void loadCatalog()}>
-                                        <IconRefresh className="icon-sm" /> Refresh
-                                    </button>
-                                </div>
-                                <div className="table-wrap">
-                                    <table>
-                                        <thead>
-                                            <tr>
-                                                <th>Server</th><th>Site</th><th>OS</th>
-                                                <th>Account</th><th>Version</th><th>Last Sync</th><th>Source</th><th>Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {catalog.length === 0 ? (
-                                                <tr className="empty-row"><td colSpan={8}>No tracked credentials available.</td></tr>
-                                            ) : catalog.map((item) => (
-                                                <tr key={item.credential_id}>
-                                                    <td><strong>{item.server_name}</strong></td>
-                                                    <td><span className="mono-tag">{item.site}</span></td>
-                                                    <td>{item.os_type}</td>
-                                                    <td>{item.managed_account}</td>
-                                                    <td><span className="badge badge-neutral">v{item.version}</span></td>
-                                                    <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{formatDate(item.last_synced_at)}</td>
-                                                    <td><span className="badge badge-info">{item.last_sync_source}</span></td>
-                                                    <td>
-                                                        <button type="button" className="btn btn-primary btn-sm" onClick={() => openDirectReveal(item)}>
-                                                            <IconEye className="icon-sm" /> Reveal
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Server</TableHead>
+                                            <TableHead>Site</TableHead>
+                                            <TableHead>OS</TableHead>
+                                            <TableHead>Account</TableHead>
+                                            <TableHead>Version</TableHead>
+                                            <TableHead>Last Sync</TableHead>
+                                            <TableHead>Source</TableHead>
+                                            <TableHead className="text-right">Action</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {catalog.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
+                                                    No tracked credentials available.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : catalog.map((item) => (
+                                            <TableRow key={item.credential_id}>
+                                                <TableCell className="font-medium">{item.server_name}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline">{item.site}</Badge>
+                                                </TableCell>
+                                                <TableCell>{item.os_type}</TableCell>
+                                                <TableCell>{item.managed_account}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="secondary">v{item.version}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{formatDate(item.last_synced_at)}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="default">{item.last_sync_source}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button size="sm" onClick={() => openDirectReveal(item)}>
+                                                        <IconEye className="w-4 h-4 mr-2" /> Reveal
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
                         )}
 
-                        {/* Activity */}
                         {activeTab === "activity" && (
-                            <>
-                                <div className="card-header">
-                                    <div>
-                                        <div className="card-title">Recent Activity</div>
-                                        <div className="card-desc">Audit trail for your direct reveals.</div>
-                                    </div>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => void loadActivity()}>
-                                        <IconRefresh className="icon-sm" /> Refresh
-                                    </button>
-                                </div>
-                                <div className="table-wrap">
-                                    <table>
-                                        <thead>
-                                            <tr><th>ID</th><th>Status</th><th>Created</th><th>Expires</th><th>Revealed</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {activity.length === 0 ? (
-                                                <tr className="empty-row"><td colSpan={5}>No access activity yet.</td></tr>
-                                            ) : activity.map((req) => (
-                                                <tr key={req.id}>
-                                                    <td><span className="mono-tag">{req.id.slice(0, 8)}…</span></td>
-                                                    <td><StatusBadge status={req.status} /></td>
-                                                    <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{formatDate(req.created_at)}</td>
-                                                    <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{formatDate(req.expires_at)}</td>
-                                                    <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{formatDate(req.revealed_at)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>ID</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Created</TableHead>
+                                            <TableHead>Expires</TableHead>
+                                            <TableHead>Revealed</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {activity.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                                                    No access activity yet.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : activity.map((req) => (
+                                            <TableRow key={req.id}>
+                                                <TableCell>
+                                                    <Badge variant="secondary">{req.id.slice(0, 8)}…</Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <StatusBadge status={req.status} />
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{formatDate(req.created_at)}</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{formatDate(req.expires_at)}</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{formatDate(req.revealed_at)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
                         )}
 
-                        {/* Reveal Output */}
                         {activeTab === "reveal" && (
-                            <>
-                                <div className="card-header">
-                                    <div>
-                                        <div className="card-title">Credential Output</div>
-                                        <div className="card-desc">Sensitive values expire automatically.</div>
+                            <CardContent>
+                                {revealData ? (
+                                    <div className="space-y-4">
+                                        <pre className="p-4 bg-muted rounded-md text-sm text-muted-foreground">{revealPayload}</pre>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <Badge variant="outline">{revealData.credential_id.slice(0, 16)}...</Badge>
+                                            {countdown && <Badge variant="destructive">{countdown}</Badge>}
+                                            {revealExpiresAt && <span className="text-muted-foreground">Expires {formatDate(revealExpiresAt.toISOString())}</span>}
+                                            <Button variant="ghost" size="sm" onClick={() => { setRevealData(null); setRevealExpiresAt(null); setCountdown(""); }}>
+                                                Hide now
+                                            </Button>
+                                        </div>
                                     </div>
-                                    {revealData ? (
-                                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setRevealData(null); setRevealExpiresAt(null); setCountdown(""); }}>
-                                            Hide now
-                                        </button>
-                                    ) : null}
-                                </div>
-                                <div className="card-body">
-                                    {revealData ? (
-                                        <>
-                                            <pre className="secret">{revealPayload}</pre>
-                                            <div className="secret-meta">
-                                                <span className="mono-tag">{revealData.credential_id}</span>
-                                                {countdown ? <span className="countdown">{countdown}</span> : null}
-                                                {revealExpiresAt ? <span>Expires {formatDate(revealExpiresAt.toISOString())}</span> : null}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <p style={{ color: "var(--text-dim)", textAlign: "center", padding: "2rem" }}>
+                                ) : (
+                                    <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-md">
+                                        <p className="text-muted-foreground">
                                             No credential revealed yet. Go to <strong>Credentials</strong> and click Reveal.
                                         </p>
-                                    )}
-                                    {message ? <div className={`toast ${messageType}`}>{message}</div> : null}
-                                </div>
-                            </>
+                                    </div>
+                                )}
+                                {message && <div className={`p-4 rounded-md mt-4 text-sm ${messageType === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>{message}</div>}
+                            </CardContent>
                         )}
-                    </div>
+                    </Card>
                 </div>
             </main>
 

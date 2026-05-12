@@ -218,6 +218,56 @@ export default function AdminPage(): JSX.Element {
         });
     }
 
+    function openEditUserDialog(user: User): void {
+        if (!session) return;
+        setDialog({
+            title: "Edit User",
+            description: `Updating user ${user.username}.`,
+            confirmLabel: "Save Changes",
+            fields: [
+                { name: "role", label: "Role", type: "select", defaultValue: user.role, options: roleOptions },
+                { name: "active", label: "Status", type: "select", defaultValue: user.active ? "active" : "inactive", options: [{ label: "Active", value: "active" }, { label: "Inactive", value: "inactive" }] }
+            ],
+            onConfirm: async (values) => {
+                try {
+                    const payload: UserUpdatePayload = {
+                        role: values.role as UserRole,
+                        active: values.active === "active"
+                    };
+                    await apiRequest(`/admin/users/${user.id}`, {
+                        method: "PATCH", token: session.token, body: JSON.stringify(payload)
+                    });
+                    setMessage("User updated"); setMessageType("success");
+                    await loadUsers();
+                    return true;
+                } catch (error) {
+                    setMessage(error instanceof Error ? error.message : "Failed to update user");
+                    setMessageType("error"); return false;
+                }
+            }
+        });
+    }
+
+    function openDeleteUserDialog(user: User): void {
+        if (!session) return;
+        setDialog({
+            title: "Delete User",
+            description: `Permanently deleting user ${user.username}. This action cannot be undone.`,
+            confirmLabel: "Delete User", tone: "danger",
+            onConfirm: async () => {
+                try {
+                    await apiRequest(`/admin/users/${user.id}`, { method: "DELETE", token: session.token });
+                    setMessage("User deleted"); setMessageType("success");
+                    await loadUsers();
+                    return true;
+                } catch (error) {
+                    setMessage(error instanceof Error ? error.message : "Failed to delete user");
+                    setMessageType("error"); return false;
+                }
+            }
+        });
+    }
+
     // --- Form Handlers (Simplified for brevity) ---
 
     async function handleCreateUser(e: FormEvent<HTMLFormElement>) {
@@ -437,6 +487,7 @@ export default function AdminPage(): JSX.Element {
                                                     <TableHead>User</TableHead>
                                                     <TableHead>Role</TableHead>
                                                     <TableHead>Status</TableHead>
+                                                    <TableHead className="text-right">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -446,6 +497,14 @@ export default function AdminPage(): JSX.Element {
                                                         <TableCell className="capitalize">{u.role}</TableCell>
                                                         <TableCell>
                                                             <StatusBadge status={u.active ? "active" : "inactive"} />
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="icon" onClick={() => openEditUserDialog(u)} disabled={u.id === session.id}>
+                                                                <IconEdit className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" onClick={() => openDeleteUserDialog(u)} disabled={u.id === session.id}>
+                                                                <IconTrash className="w-4 h-4" />
+                                                            </Button>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
