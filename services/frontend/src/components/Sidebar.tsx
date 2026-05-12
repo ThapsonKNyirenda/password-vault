@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { clearSession } from "../lib/auth";
-import { IconLogout, IconShield, IconMenu, IconX } from "./Icons";
+import { IconLogout, IconMenu, IconVaultPrism, IconX } from "./Icons";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface SidebarProps {
     username: string;
@@ -55,11 +56,11 @@ export function Sidebar({ username, role, activeTab, tabs, onTabChange }: Sideba
             <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
                 <div className="sidebar-logo">
                     <div className="sidebar-logo-mark">
-                        <IconShield className="icon-md" />
+                        <IconVaultPrism className="icon-md" />
                     </div>
                     <div className="sidebar-logo-text">
-                        <small>Vault + Agent</small>
-                        <strong>Control Plane</strong>
+                        <small>Prism Vault</small>
+                        <strong>Access Fabric</strong>
                     </div>
                     <button
                         type="button"
@@ -87,6 +88,7 @@ export function Sidebar({ username, role, activeTab, tabs, onTabChange }: Sideba
                 </nav>
 
                 <div className="sidebar-footer">
+                    <ThemeToggle />
                     <div className="sidebar-user" title={`${username} (${role})`}>
                         <div className="sidebar-avatar">{initials}</div>
                         <div className="sidebar-user-info">

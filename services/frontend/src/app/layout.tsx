@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { cn } from "@/lib/utils";
 
-const inter = Inter({
+const spaceGrotesk = Space_Grotesk({
     subsets: ["latin"],
-    variable: "--font-inter",
+    variable: "--font-sans",
     display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-mono'});
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
     title: "Credential Control Plane",
@@ -18,9 +17,29 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }): JSX.Element {
+    const themeScript = `
+        (() => {
+            try {
+                const stored = localStorage.getItem("vault_theme");
+                const theme = stored === "light" || stored === "dark"
+                    ? stored
+                    : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+                document.documentElement.classList.toggle("dark", theme === "dark");
+                document.documentElement.dataset.theme = theme;
+                document.documentElement.style.colorScheme = theme;
+            } catch {
+                document.documentElement.classList.add("dark");
+                document.documentElement.dataset.theme = "dark";
+            }
+        })();
+    `;
+
     return (
-        <html lang="en" suppressHydrationWarning className={cn("font-mono", jetbrainsMono.variable)}>
-            <body className={`${inter.variable} ${jetbrainsMono.variable} bg-background text-foreground antialiased`}>
+        <html lang="en" suppressHydrationWarning>
+            <head>
+                <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+            </head>
+            <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} bg-background text-foreground antialiased`}>
                 {children}
             </body>
         </html>

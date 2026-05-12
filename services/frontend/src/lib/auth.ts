@@ -14,6 +14,28 @@ function inBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
+function isJwtExpired(token: string): boolean {
+  const [, payload] = token.split(".");
+  if (!payload) {
+    return false;
+  }
+
+  try {
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      "=",
+    );
+    const decoded = JSON.parse(window.atob(paddedPayload)) as { exp?: unknown };
+    if (typeof decoded.exp !== "number") {
+      return false;
+    }
+    return decoded.exp * 1000 <= Date.now();
+  } catch {
+    return false;
+  }
+}
+
 export function getSession(): AuthSession | null {
   if (!inBrowser()) {
     return null;
@@ -24,6 +46,11 @@ export function getSession(): AuthSession | null {
   const username = window.localStorage.getItem(USERNAME_KEY);
 
   if (!token || !role || !username) {
+    return null;
+  }
+
+  if (isJwtExpired(token)) {
+    clearSession();
     return null;
   }
 

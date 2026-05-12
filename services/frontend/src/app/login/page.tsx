@@ -3,7 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { IconKey, IconLock, IconShield } from "../../components/Icons";
+import { IconActivity, IconLock, IconShield, IconVaultPrism } from "../../components/Icons";
+import { ThemeToggle } from "../../components/ThemeToggle";
 import { apiRequest } from "../../lib/api";
 import { getSession, setSession } from "../../lib/auth";
 import type { AuthResponse } from "../../lib/types";
@@ -38,15 +39,11 @@ export default function LoginPage(): JSX.Element {
         setMessage("Authenticating...");
         setMessageType("");
         
-        console.log("Attempting login with:", { username, password: "***" });
-        
         try {
             const payload = await apiRequest<AuthResponse>("/auth/login", {
                 method: "POST",
                 body: JSON.stringify({ username: username.trim(), password: password.trim() }),
             });
-            
-            console.log("Login successful:", payload);
             
             setSession({ token: payload.access_token, role: payload.role, username: payload.username });
             setMessage("Login successful! Redirecting...");
@@ -71,16 +68,18 @@ export default function LoginPage(): JSX.Element {
 
     return (
         <div className="login-shell">
-            {/* ── Left: Login Form ── */}
             <div className="login-left">
+                <div className="login-theme">
+                    <ThemeToggle />
+                </div>
                 <div className="login-box">
                     <div className="login-logo">
                         <div className="login-logo-mark">
-                            <IconShield />
+                            <IconVaultPrism />
                         </div>
                         <div className="login-logo-text">
-                            <small>Vault + Agent</small>
-                            <strong>Control Plane</strong>
+                            <small>Prism Vault</small>
+                            <strong>Access Fabric</strong>
                         </div>
                     </div>
 
@@ -99,7 +98,7 @@ export default function LoginPage(): JSX.Element {
                                 type="text"
                                 value={username}
                                 autoComplete="username"
-                                placeholder="e.g. admin"
+                                placeholder="Username"
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
                             />
@@ -111,7 +110,7 @@ export default function LoginPage(): JSX.Element {
                                 type="password"
                                 value={password}
                                 autoComplete="current-password"
-                                placeholder="••••••••••••"
+                                placeholder="Password"
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                             />
@@ -123,7 +122,7 @@ export default function LoginPage(): JSX.Element {
                             disabled={loading}
                         >
                             <IconLock className="icon-sm" />
-                            {loading ? "Signing In…" : "Sign In"}
+                            {loading ? "Signing in..." : "Sign In"}
                         </button>
                     </form>
 
@@ -135,23 +134,18 @@ export default function LoginPage(): JSX.Element {
                 </div>
             </div>
 
-            {/* ── Right: Info Panel ── */}
             <div className="login-right">
                 <div className="info-card">
                     <div className="info-card-title">
-                        <IconKey className="icon" style={{ color: "var(--accent)" }} />
-                        Seed Accounts
+                        <IconActivity className="icon" style={{ color: "var(--accent-vault)" }} />
+                        Live Control Plane
                     </div>
-                    <p>Use these to get started. Rotate them immediately outside local testing.</p>
-                    <div className="creds-list">
-                        <div className="cred-item">admin / ChangeMeStrong!</div>
-                        <div className="cred-item">engineer / EngineerChangeMe!123</div>
-                    </div>
+                    <p>Monitor server assignments, agent syncs, and password reveal workflows from a single audited surface.</p>
                 </div>
 
                 <div className="info-card">
                     <div className="info-card-title">
-                        <IconShield className="icon" style={{ color: "var(--accent)" }} />
+                        <IconShield className="icon" style={{ color: "var(--accent-vault)" }} />
                         Security Baseline
                     </div>
                     <div className="security-list">

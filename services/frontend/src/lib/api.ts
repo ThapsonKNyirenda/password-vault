@@ -1,3 +1,5 @@
+import { clearSession } from "./auth";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
 interface RequestOptions extends Omit<RequestInit, "headers"> {
@@ -51,6 +53,17 @@ function normalizeErrorDetail(detail: unknown): string | null {
   return null;
 }
 
+function redirectExpiredSession(path: string): void {
+  if (typeof window === "undefined" || path === "/auth/login") {
+    return;
+  }
+
+  clearSession();
+  if (window.location.pathname !== "/login") {
+    window.location.replace("/login");
+  }
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = `${API_BASE_URL}${path}`;
   const headers: Record<string, string> = {
@@ -83,6 +96,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      redirectExpiredSession(path);
+    }
+
     const detail = typeof payload === "object" && payload !== null && "detail" in payload
       ? (payload as { detail: unknown }).detail
       : null;

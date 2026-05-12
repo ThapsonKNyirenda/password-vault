@@ -24,6 +24,41 @@ export function IconShield({ className, ...props }: SVGProps<SVGSVGElement>): JS
     );
 }
 
+export function IconVaultPrism({ className, ...props }: SVGProps<SVGSVGElement>): JSX.Element {
+    return (
+        <svg {...baseProps} className={combineClassName("icon", className)} {...props}>
+            <path d="M12 2.8 20 7v6.2c0 4.4-3.2 7.3-8 8-4.8-.7-8-3.6-8-8V7l8-4.2z" />
+            <path d="M8.2 8.7 12 6.8l3.8 1.9v4.1L12 15l-3.8-2.2V8.7z" />
+            <path d="M12 6.8V15" />
+            <path d="m8.2 8.7 3.8 2 3.8-2" />
+        </svg>
+    );
+}
+
+export function IconSun({ className, ...props }: SVGProps<SVGSVGElement>): JSX.Element {
+    return (
+        <svg {...baseProps} className={combineClassName("icon", className)} {...props}>
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2" />
+            <path d="M12 20v2" />
+            <path d="m4.93 4.93 1.41 1.41" />
+            <path d="m17.66 17.66 1.41 1.41" />
+            <path d="M2 12h2" />
+            <path d="M20 12h2" />
+            <path d="m6.34 17.66-1.41 1.41" />
+            <path d="m19.07 4.93-1.41 1.41" />
+        </svg>
+    );
+}
+
+export function IconMoon({ className, ...props }: SVGProps<SVGSVGElement>): JSX.Element {
+    return (
+        <svg {...baseProps} className={combineClassName("icon", className)} {...props}>
+            <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 7 7 0 1 0 20.5 14.5z" />
+        </svg>
+    );
+}
+
 export function IconLock({ className, ...props }: SVGProps<SVGSVGElement>): JSX.Element {
     return (
         <svg {...baseProps} className={combineClassName("icon", className)} {...props}>
