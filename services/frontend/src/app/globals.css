@@ -356,6 +356,16 @@
     background: var(--danger-dim);
   }
 
+  .confirm-select {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+  }
+
+  .confirm-select option {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+  }
+
   /* Main Content */
   .main-content {
     margin-left: var(--sidebar-w);

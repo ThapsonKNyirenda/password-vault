@@ -41,6 +41,10 @@ export interface RevealCredentialResponse {
   password: string;
 }
 
+export interface RevealPolicy {
+  minutes: number;
+}
+
 export interface Agent {
   id: string;
   name: string;
@@ -90,4 +94,15 @@ export interface UserUpdatePayload {
   username?: string;
   role?: UserRole;
   password?: string;
+}
+
+export interface AuditLog {
+  id: number;
+  actor_type: string;
+  actor_id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string;
+  details: Record<string, unknown>;
+  created_at: string;
 }

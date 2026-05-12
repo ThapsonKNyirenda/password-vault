@@ -37,6 +37,7 @@ import {
     IconServer,
     IconCheckCircle,
     IconExclamation,
+    IconAlert,
 } from "../../components/Icons";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -69,21 +70,21 @@ const roleOptions: Array<{ label: string; value: UserRole }> = [
 ];
 
 const TABS = [
-    { id: "requests", label: "Approvals", icon: <IconInbox className="sidebar-link-icon" /> },
-    { id: "inventory", label: "Servers", icon: <IconServer className="sidebar-link-icon" /> },
+    { id: "servers", label: "Servers", icon: <IconServer className="sidebar-link-icon" /> },
     { id: "users", label: "Users", icon: <IconUser className="sidebar-link-icon" /> },
+    { id: "logs", label: "System Logs", icon: <IconAlert className="sidebar-link-icon" /> },
 ];
 
 export default function AdminPage(): JSX.Element {
     const router = useRouter();
     const session = useMemo(() => getSession(), []);
 
-    const [activeTab, setActiveTab] = useState<string>("requests");
-    const [pendingRequests, setPendingRequests] = useState<AccessRequest[]>([]);
+    const [activeTab, setActiveTab] = useState<string>("servers");
     const [agents, setAgents] = useState<Agent[]>([]);
     const [servers, setServers] = useState<TargetServer[]>([]);
     const [credentials, setCredentials] = useState<Credential[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState<"" | "error" | "success">("");
@@ -94,13 +95,13 @@ export default function AdminPage(): JSX.Element {
     const [searchTerm, setSearchTerm] = useState("");
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
-    const loadPendingRequests = useCallback(async (): Promise<void> => {
+    const loadAuditLogs = useCallback(async (): Promise<void> => {
         if (!session) return;
         try {
-            const data = await apiRequest<AccessRequest[]>("/access-requests/pending", { token: session.token });
-            setPendingRequests(data);
+            const data = await apiRequest<any[]>("/audit/logs", { token: session.token });
+            setAuditLogs(data);
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to load requests");
+            setMessage(error instanceof Error ? error.message : "Failed to load logs");
             setMessageType("error");
         }
     }, [session]);
@@ -136,27 +137,28 @@ export default function AdminPage(): JSX.Element {
     useEffect(() => {
         if (!session) { router.replace("/login"); return; }
         if (session.role !== "admin") { router.replace("/engineer"); return; }
-        void Promise.all([loadPendingRequests(), loadServers(), loadUsers()]);
-    }, [loadServers, loadPendingRequests, loadUsers, router, session]);
+        void Promise.all([loadServers(), loadUsers(), loadAuditLogs()]);
+    }, [loadServers, loadUsers, loadAuditLogs, router, session]);
 
     const stats = useMemo(() => ({
-        pending: pendingRequests.length,
         credentials: credentials.length,
         agents: agents.filter(a => a.active).length,
-        users: users.filter(u => u.active).length
-    }), [pendingRequests, credentials, agents, users]);
+        users: users.filter(u => u.active).length,
+        logs: auditLogs.length
+    }), [credentials, agents, users, auditLogs]);
 
-    const filteredPendingRequests = useMemo(() => {
-        let filtered = pendingRequests;
+    const filteredAuditLogs = useMemo(() => {
+        let filtered = auditLogs;
         if (!searchTerm) return filtered;
         const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(req =>
-            req.requester_id.toString().includes(term) ||
-            req.credential_id.toLowerCase().includes(term) ||
-            req.reason.toLowerCase().includes(term)
+        filtered = filtered.filter(log => 
+            log.action.toLowerCase().includes(term) ||
+            log.actor_type.toLowerCase().includes(term) ||
+            log.resource_type.toLowerCase().includes(term) ||
+            log.details?.toString().toLowerCase().includes(term)
         );
 
-        if (sortConfig && sortConfig.key === "requests") {
+        if (sortConfig && sortConfig.key === "logs") {
             filtered = [...filtered].sort((a, b) => {
                 const aValue = a.created_at;
                 const bValue = b.created_at;
@@ -166,7 +168,7 @@ export default function AdminPage(): JSX.Element {
             });
         }
         return filtered;
-    }, [pendingRequests, searchTerm, sortConfig]);
+    }, [auditLogs, searchTerm, sortConfig]);
 
     const filteredCredentials = useMemo(() => {
         let filtered = credentials;
@@ -235,76 +237,6 @@ export default function AdminPage(): JSX.Element {
         } finally {
             setDialogBusy(false);
         }
-    }
-
-    function openApproveDialog(request: AccessRequest): void {
-        if (!session) return;
-        const credential = credentials.find(c => c.id === request.credential_id);
-        const server = servers.find(s => s.id === credential?.server_id);
-        const credentialDisplay = credential && server
-            ? `${credential.managed_account} on ${server.name}`
-            : "credential access";
-
-        setDialog({
-            title: "Approve Access",
-            description: `Authorizing access for ${credentialDisplay}.`,
-            confirmLabel: "Approve",
-            fields: [{
-                name: "expires_minutes", label: "Validity (minutes)", type: "number",
-                defaultValue: "15", min: 5, max: 120, helper: "Max 120 minutes."
-            }],
-            onConfirm: async (values) => {
-                try {
-                    await apiRequest(`/access-requests/${request.id}/approve`, {
-                        method: "POST",
-                        token: session.token,
-                        body: JSON.stringify({ expires_minutes: Number(values.expires_minutes) })
-                    });
-                    setMessage("Request approved");
-                    setMessageType("success");
-                    await loadPendingRequests();
-                    return true;
-                } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to approve");
-                    setMessageType("error");
-                    return false;
-                }
-            }
-        });
-    }
-
-    function openDenyDialog(request: AccessRequest): void {
-        if (!session) return;
-        const credential = credentials.find(c => c.id === request.credential_id);
-        const server = servers.find(s => s.id === credential?.server_id);
-        const credentialDisplay = credential && server
-            ? `${credential.managed_account} on ${server.name}`
-            : "credential access";
-
-        setDialog({
-            title: "Deny Access",
-            description: `Denying access request for ${credentialDisplay}.`,
-            confirmLabel: "Deny",
-            tone: "danger",
-            fields: [{ name: "note", label: "Reason", type: "textarea", placeholder: "Unauthorized" }],
-            onConfirm: async (values) => {
-                try {
-                    await apiRequest(`/access-requests/${request.id}/deny`, {
-                        method: "POST",
-                        token: session.token,
-                        body: JSON.stringify({ note: values.note })
-                    });
-                    setMessage("Request denied");
-                    setMessageType("success");
-                    await loadPendingRequests();
-                    return true;
-                } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to deny");
-                    setMessageType("error");
-                    return false;
-                }
-            }
-        });
     }
 
     function openRevealDialog(credential: Credential, serverName?: string): void {
@@ -447,12 +379,6 @@ export default function AdminPage(): JSX.Element {
 
                     <div className="stats-grid">
                         <StatCard
-                            label="Pending Approvals"
-                            value={stats.pending}
-                            variant={stats.pending > 0 ? "warning" : "success"}
-                            icon={<IconExclamation className="icon-lg" />}
-                        />
-                        <StatCard
                             label="Managed Credentials"
                             value={stats.credentials}
                             variant="accent"
@@ -469,6 +395,12 @@ export default function AdminPage(): JSX.Element {
                             value={stats.users}
                             icon={<IconUser className="icon-lg" />}
                         />
+                        <StatCard
+                            label="System Logs"
+                            value={stats.logs}
+                            variant="default"
+                            icon={<IconAlert className="icon-lg" />}
+                        />
                     </div>
 
                     <div className="card">
@@ -478,13 +410,13 @@ export default function AdminPage(): JSX.Element {
                             ))}
                         </div>
 
-                        {activeTab === "requests" && (
+                        {activeTab === "servers" && (
                             <div>
                                 <div className="mb-4">
                                     <SearchInput
                                         value={searchTerm}
                                         onChange={setSearchTerm}
-                                        placeholder="Search requests by user, credential, or reason..."
+                                        placeholder="Search servers by name, account, or site..."
                                     />
                                 </div>
                                 <div className="table-wrap">
@@ -493,59 +425,41 @@ export default function AdminPage(): JSX.Element {
                                             <TableRow>
                                                 <TableHead
                                                     className="cursor-pointer hover:bg-muted/50"
-                                                    onClick={() => handleSort("requests")}
+                                                    onClick={() => handleSort("credentials")}
                                                 >
                                                     <div className="flex items-center gap-1">
-                                                        Requester
-                                                        {sortConfig?.key === "requests" && (
+                                                        Account
+                                                        {sortConfig?.key === "credentials" && (
                                                             <span className="text-xs">
                                                                 {sortConfig.direction === "asc" ? "↑" : "↓"}
                                                             </span>
                                                         )}
                                                     </div>
                                                 </TableHead>
-                                                <TableHead>Credential</TableHead>
-                                                <TableHead>Reason</TableHead>
+                                                <TableHead>Target</TableHead>
+                                                <TableHead>Sync</TableHead>
                                                 <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {filteredPendingRequests.length === 0 ? (
+                                            {filteredCredentials.length === 0 ? (
                                                 <TableRow>
                                                     <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                                        {searchTerm ? "No requests found matching your search." : "No pending requests."}
+                                                        {searchTerm ? "No credentials found matching your search." : "No credentials available."}
                                                     </TableCell>
                                                 </TableRow>
                                             ) : (
-                                                filteredPendingRequests.map(r => (
-                                                    <TableRow key={r.id}>
+                                                filteredCredentials.map(c => (
+                                                    <TableRow key={c.id}>
+                                                        <TableCell>{servers.find(s => s.id === c.server_id)?.name ?? c.server_id}</TableCell>
+                                                        <TableCell className="font-medium">{c.managed_account}</TableCell>
                                                         <TableCell>
-                                                            <div className="flex items-center gap-2">
-                                                                <IconUser className="w-4 h-4 text-muted-foreground" />
-                                                                <strong>User #{r.requester_id}</strong>
-                                                            </div>
+                                                            <Badge variant="secondary">{c.last_sync_source}</Badge>
                                                         </TableCell>
-                                                        <TableCell>
-                                                            <Badge variant="outline">
-                                                                {(() => {
-                                                                    const credential = credentials.find(c => c.id === r.credential_id);
-                                                                    const server = servers.find(s => s.id === credential?.server_id);
-                                                                    return server && credential
-                                                                        ? `${credential.managed_account}@${server.name}`
-                                                                        : `Request #${r.id.slice(0, 8)}`;
-                                                                })()}
-                                                            </Badge>
-                                                        </TableCell>
-                                                        <TableCell className="text-muted-foreground">{r.reason}</TableCell>
-                                                        <TableCell>
-                                                            <div className="flex items-center gap-2">
-                                                                <Button size="sm" onClick={() => openApproveDialog(r)}>
-                                                                    <IconShield className="w-4 h-4 mr-2" /> Approve
-                                                                </Button>
-                                                                <Button size="sm" variant="destructive" onClick={() => openDenyDialog(r)}>
-                                                                    <IconTrash className="w-4 h-4 mr-2" /> Deny
-                                                                </Button>
-                                                            </div>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="icon" onClick={() => openRevealDialog(c)}>
+                                                                <IconEye className="w-4 h-4" />
+                                                            </Button>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))
@@ -556,97 +470,7 @@ export default function AdminPage(): JSX.Element {
                             </div>
                         )}
 
-                        {activeTab === "inventory" && (
-                            <CardContent>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <Card>
-                                        <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                            <CardTitle className="text-base font-medium">Credentials</CardTitle>
-                                            <Button variant="ghost" size="sm" onClick={loadServers}>
-                                                <IconRefresh className="w-4 h-4" />
-                                            </Button>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="mb-4">
-                                                <SearchInput
-                                                    value={searchTerm}
-                                                    onChange={setSearchTerm}
-                                                    placeholder="Search credentials by server, account, or site..."
-                                                />
-                                            </div>
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead
-                                                            className="cursor-pointer hover:bg-muted/50"
-                                                            onClick={() => handleSort("credentials")}
-                                                        >
-                                                            <div className="flex items-center gap-1">
-                                                                Account
-                                                                {sortConfig?.key === "credentials" && (
-                                                                    <span className="text-xs">
-                                                                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </TableHead>
-                                                        <TableHead>Target</TableHead>
-                                                        <TableHead>Sync</TableHead>
-                                                        <TableHead className="text-right">Actions</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {filteredCredentials.length === 0 ? (
-                                                        <TableRow>
-                                                            <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                                                {searchTerm ? "No credentials found matching your search." : "No credentials available."}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ) : (
-                                                        filteredCredentials.map(c => (
-                                                            <TableRow key={c.id}>
-                                                                <TableCell>{servers.find(s => s.id === c.server_id)?.name ?? c.server_id}</TableCell>
-                                                                <TableCell className="font-medium">{c.managed_account}</TableCell>
-                                                                <TableCell>
-                                                                    <Badge variant="secondary">{c.last_sync_source}</Badge>
-                                                                </TableCell>
-                                                                <TableCell className="text-right">
-                                                                    <Button variant="ghost" size="icon" onClick={() => openRevealDialog(c)}>
-                                                                        <IconEye className="w-4 h-4" />
-                                                                    </Button>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="text-base font-medium">Reveal Output</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            {revealData ? (
-                                                <div className="space-y-4">
-                                                    <pre className="p-4 bg-muted rounded-md text-sm text-muted-foreground">{revealPayload}</pre>
-                                                    <div className="flex items-center justify-between text-sm">
-                                                        <Badge variant="outline">{revealData.server_name} - {revealData.managed_account}</Badge>
-                                                        <span className="text-muted-foreground">Revealed {formatDate(revealTimestamp!)}
-                                                        </span>
-                                                        <Button variant="ghost" size="sm" onClick={() => setRevealData(null)}>Clear</Button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-md">
-                                                    <p className="text-muted-foreground">No reveal active.</p>
-                                                </div>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </CardContent>
-                        )}
+                        
 
                         {activeTab === "users" && (
                             <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -756,6 +580,77 @@ export default function AdminPage(): JSX.Element {
                                         </Table>
                                     </CardContent>
                                 </Card>
+                            </CardContent>
+                        )}
+
+                        {activeTab === "logs" && (
+                            <CardContent>
+                                <div className="mb-4">
+                                    <SearchInput
+                                        value={searchTerm}
+                                        onChange={setSearchTerm}
+                                        placeholder="Search logs by action, actor, or resource..."
+                                    />
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead
+                                                className="cursor-pointer hover:bg-muted/50"
+                                                onClick={() => handleSort("logs")}
+                                            >
+                                                <div className="flex items-center gap-1">
+                                                    Timestamp
+                                                    {sortConfig?.key === "logs" && (
+                                                        <span className="text-xs">
+                                                            {sortConfig.direction === "asc" ? "↑" : "↓"}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableHead>
+                                            <TableHead>Actor</TableHead>
+                                            <TableHead>Action</TableHead>
+                                            <TableHead>Resource</TableHead>
+                                            <TableHead>Details</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredAuditLogs.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                    {searchTerm ? "No logs found matching your search." : "No audit logs available."}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            filteredAuditLogs.map(log => (
+                                                <TableRow key={log.id}>
+                                                    <TableCell className="text-xs text-muted-foreground">
+                                                        {formatDate(log.created_at)}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline">{log.actor_type}</Badge>
+                                                        <span className="ml-2 text-sm">{log.actor_id}</span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="secondary">{log.action}</Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-sm">{log.resource_type}</span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {Object.entries(log.details || {}).map(([key, value]) => (
+                                                                <div key={key}>
+                                                                    <strong>{key}:</strong> {String(value)}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
                             </CardContent>
                         )}
                     </div>

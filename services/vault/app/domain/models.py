@@ -23,7 +23,6 @@ def ensure_utc(value: datetime | None) -> datetime | None:
 class UserRole(str, enum.Enum):
     ADMIN = "admin"
     ENGINEER = "engineer"
-    AUDITOR = "auditor"
 
 
 class ServerOS(str, enum.Enum):
@@ -53,6 +52,14 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), index=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+
+    key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    value: Mapped[str] = mapped_column(String(255))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
 class Agent(Base):

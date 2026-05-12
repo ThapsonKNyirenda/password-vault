@@ -157,6 +157,10 @@ class RevealCredentialResponse(BaseModel):
     password: str
 
 
+class RevealPolicy(BaseModel):
+    minutes: int = Field(default=5, ge=1, le=120)
+
+
 class AgentCredentialAssignment(BaseModel):
     credential_id: str
     server_id: str

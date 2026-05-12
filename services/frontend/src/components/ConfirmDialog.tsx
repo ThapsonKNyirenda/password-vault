@@ -120,7 +120,7 @@ export function ConfirmDialog({
                         <CardContent className="space-y-4">
                             {fields.map((field, index) => {
                                 const value = values[field.name] ?? "";
-                                
+
                                 return (
                                     <div key={field.name} className="space-y-2">
                                         <label htmlFor={field.name} className="text-sm font-medium">
@@ -136,7 +136,7 @@ export function ConfirmDialog({
                                                 required={field.required}
                                                 onChange={(e) => setValues((prev) => ({ ...prev, [field.name]: e.target.value }))}
                                                 autoFocus={index === 0}
-                                                className="w-full min-h-[80px] p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                                                className="w-full min-h-[80px] p-3 border border-input rounded-md resize-none bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 dark:bg-input/30"
                                             />
                                         ) : field.type === "select" ? (
                                             <select
@@ -146,7 +146,7 @@ export function ConfirmDialog({
                                                 required={field.required}
                                                 onChange={(e) => setValues((prev) => ({ ...prev, [field.name]: e.target.value }))}
                                                 autoFocus={index === 0}
-                                                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                                className="confirm-select w-full p-3 border border-input rounded-md bg-transparent text-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 dark:bg-input/30"
                                             >
                                                 {field.options?.map((option) => (
                                                     <option key={option.value} value={option.value}>
@@ -182,8 +182,8 @@ export function ConfirmDialog({
                         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
                             {cancelLabel}
                         </Button>
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             variant={tone === "danger" ? "destructive" : "default"}
                             disabled={busy}
                             className="min-w-[120px]"

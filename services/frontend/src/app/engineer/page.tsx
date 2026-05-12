@@ -44,8 +44,7 @@ function formatCountdown(msRemaining: number): string {
 }
 
 const TABS = [
-    { id: "catalog", label: "Credentials", icon: <IconServer className="sidebar-link-icon" /> },
-    { id: "activity", label: "Recent Activity", icon: <IconActivity className="sidebar-link-icon" /> },
+    { id: "catalog", label: "Servers", icon: <IconServer className="sidebar-link-icon" /> },
     { id: "reveal", label: "Credential Output", icon: <IconLock className="sidebar-link-icon" /> },
 ];
 
@@ -55,7 +54,6 @@ export default function EngineerPage(): JSX.Element {
 
     const [activeTab, setActiveTab] = useState("catalog");
     const [catalog, setCatalog] = useState<CredentialCatalogItem[]>([]);
-    const [activity, setActivity] = useState<AccessRequest[]>([]);
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState<"" | "error" | "success">("");
     const [revealData, setRevealData] = useState<RevealCredentialResponse | null>(null);
@@ -74,21 +72,11 @@ export default function EngineerPage(): JSX.Element {
         }
     }, [session]);
 
-    const loadActivity = useCallback(async (): Promise<void> => {
-        if (!session) return;
-        try {
-            setActivity(await apiRequest<AccessRequest[]>("/access-requests/mine", { token: session.token }));
-        } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to load activity");
-            setMessageType("error");
-        }
-    }, [session]);
-
     useEffect(() => {
         if (!session) { router.replace("/login"); return; }
         if (session.role === "admin") { router.replace("/admin"); return; }
-        void Promise.all([loadCatalog(), loadActivity()]);
-    }, [loadCatalog, loadActivity, router, session]);
+        void loadCatalog();
+    }, [loadCatalog, router, session]);
 
     const latestSync = useMemo(() => {
         const dates = catalog.map((i) => new Date(i.last_synced_at)).filter((d) => !Number.isNaN(d.getTime()));
@@ -139,7 +127,6 @@ export default function EngineerPage(): JSX.Element {
                     setRevealExpiresAt(data.expires_at ? new Date(data.expires_at) : new Date(Date.now() + 5 * 60 * 1000));
                     setMessage("Credential revealed. Auto-hide in 5 minutes."); setMessageType("success");
                     setActiveTab("reveal");
-                    await loadActivity();
                     return true;
                 } catch (error) {
                     setMessage(error instanceof Error ? error.message : "Failed to reveal"); setMessageType("error");
@@ -170,15 +157,9 @@ export default function EngineerPage(): JSX.Element {
                     {/* Stats */}
                     <div className="stats-grid">
                         <StatCard
-                            label="Tracked Credentials"
+                            label="Total Credentials"
                             value={catalog.length}
-                            variant="accent"
-                            icon={<IconServer className="icon-lg" />}
-                        />
-                        <StatCard
-                            label="Access Events"
-                            value={activity.length}
-                            icon={<IconActivity className="icon-lg" />}
+                            icon={<IconKey className="icon-lg" />}
                         />
                         <StatCard
                             label="Last Sync"
@@ -192,6 +173,12 @@ export default function EngineerPage(): JSX.Element {
                             variant={revealData ? "success" : "default"}
                             sub={countdown ? `${countdown} remaining` : undefined}
                             icon={revealData ? <IconCheckCircle className="icon-lg" /> : <IconLock className="icon-lg" />}
+                        />
+                        <StatCard
+                            label="Available Servers"
+                            value={catalog.length}
+                            variant="accent"
+                            icon={<IconServer className="icon-lg" />}
                         />
                     </div>
 
@@ -207,7 +194,6 @@ export default function EngineerPage(): JSX.Element {
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={() => {
                                     if (activeTab === 'catalog') loadCatalog();
-                                    else if (activeTab === 'activity') loadActivity();
                                 }}>
                                     <IconRefresh className="w-4 h-4 mr-2" /> Refresh
                                 </Button>
@@ -256,43 +242,6 @@ export default function EngineerPage(): JSX.Element {
                                                         <IconEye className="w-4 h-4 mr-2" /> Reveal
                                                     </Button>
                                                 </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        )}
-
-                        {activeTab === "activity" && (
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>ID</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Created</TableHead>
-                                            <TableHead>Expires</TableHead>
-                                            <TableHead>Revealed</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {activity.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                                                    No access activity yet.
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : activity.map((req) => (
-                                            <TableRow key={req.id}>
-                                                <TableCell>
-                                                    <Badge variant="secondary">Request #{req.id.slice(0, 8)}</Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <StatusBadge status={req.status} />
-                                                </TableCell>
-                                                <TableCell className="text-muted-foreground text-xs">{formatDate(req.created_at)}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs">{formatDate(req.expires_at)}</TableCell>
-                                                <TableCell className="text-muted-foreground text-xs">{formatDate(req.revealed_at)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>

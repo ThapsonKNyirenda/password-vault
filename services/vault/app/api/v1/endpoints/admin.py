@@ -6,7 +6,7 @@ from app.api.deps import require_roles
 from app.core.config import get_settings
 from app.core.security import generate_agent_token, hash_agent_token, hash_password
 from app.db.session import get_db
-from app.domain.models import Agent, Credential, SyncSource, TargetServer, User, UserRole
+from app.domain.models import Agent, Credential, SyncSource, SystemSetting, TargetServer, User, UserRole
 from app.domain.schemas import (
     AgentCreateRequest,
     AgentCreateResponse,
@@ -20,6 +20,7 @@ from app.domain.schemas import (
     UserCreate,
     UserOut,
     UserUpdate,
+    RevealPolicy,
 )
 from app.services.audit_service import record_audit
 from app.services.encryption_service import EnvelopeCipher
@@ -215,7 +216,7 @@ def create_agent(
 @router.get("/agents", response_model=list[AgentOut])
 def list_agents(
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.ADMIN, UserRole.AUDITOR)),
+    _: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> list[Agent]:
     return db.scalars(select(Agent).order_by(Agent.created_at.desc())).all()
 
@@ -265,7 +266,7 @@ def create_server(
 @router.get("/servers", response_model=list[TargetServerOut])
 def list_servers(
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.ADMIN, UserRole.AUDITOR)),
+    _: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> list[TargetServer]:
     return db.scalars(select(TargetServer).order_by(TargetServer.created_at.desc())).all()
 
@@ -320,9 +321,47 @@ def create_credential(
 @router.get("/credentials", response_model=list[CredentialOut])
 def list_credentials(
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.ADMIN, UserRole.AUDITOR)),
+    _: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> list[Credential]:
     return db.scalars(select(Credential).order_by(Credential.created_at.desc())).all()
+
+
+@router.get("/reveal-policy", response_model=RevealPolicy)
+def get_reveal_policy(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(UserRole.ADMIN)),
+) -> RevealPolicy:
+    setting = db.get(SystemSetting, "direct_reveal_minutes")
+    if setting is None or not setting.value.strip().isdigit():
+        return RevealPolicy(minutes=settings.direct_reveal_minutes)
+    return RevealPolicy(minutes=int(setting.value))
+
+
+@router.put("/reveal-policy", response_model=RevealPolicy)
+def update_reveal_policy(
+    payload: RevealPolicy,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> RevealPolicy:
+    setting = db.get(SystemSetting, "direct_reveal_minutes")
+    if setting is None:
+        setting = SystemSetting(key="direct_reveal_minutes", value=str(payload.minutes))
+        db.add(setting)
+    else:
+        setting.value = str(payload.minutes)
+
+    record_audit(
+        db,
+        actor_type="user",
+        actor_id=str(current_user.id),
+        action="update_reveal_policy",
+        resource_type="system_setting",
+        resource_id=setting.key,
+        details={"minutes": payload.minutes},
+    )
+    db.commit()
+    db.refresh(setting)
+    return RevealPolicy(minutes=payload.minutes)
 
 
 @router.put("/credentials/{credential_id}/password", response_model=CredentialOut)

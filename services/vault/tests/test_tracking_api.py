@@ -68,32 +68,15 @@ def test_create_credential_sets_admin_sync_metadata(client) -> None:
     assert credential["last_synced_at"]
 
 
-def test_approved_request_can_reveal_current_password_without_jobs(client) -> None:
+def test_direct_reveal_returns_current_password(client) -> None:
     admin_token = login(client, "admin", "ChangeMeStrong!")
     engineer_token = login(client, "engineer", "EngineerChangeMe!123")
     _, _, credential_id = create_agent_server_credential(client, admin_token)
 
-    request_response = client.post(
-        "/api/v1/access-requests/",
-        headers={"Authorization": f"Bearer {engineer_token}"},
-        json={"credential_id": credential_id, "reason": "Troubleshooting incident"},
-    )
-    assert request_response.status_code == 201
-    request_payload = request_response.json()
-    assert "rotation_job_id" not in request_payload
-
-    approve_response = client.post(
-        f"/api/v1/access-requests/{request_payload['id']}/approve",
-        headers={"Authorization": f"Bearer {admin_token}"},
-        json={"expires_minutes": 15},
-    )
-    assert approve_response.status_code == 200
-    assert "rotation_job_id" not in approve_response.json()
-
     reveal_response = client.post(
-        f"/api/v1/access-requests/{request_payload['id']}/reveal",
+        "/api/v1/access-requests/direct-reveal",
         headers={"Authorization": f"Bearer {engineer_token}"},
-        json={},
+        json={"credential_id": credential_id},
     )
     assert reveal_response.status_code == 200
     reveal_payload = reveal_response.json()
