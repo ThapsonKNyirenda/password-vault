@@ -7,9 +7,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_roles
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.domain.models import AccessRequest, AccessStatus, Credential, SystemSetting, TargetServer, User, UserRole, utcnow
+from app.domain.models import Credential, SystemSetting, TargetServer, User, UserRole, utcnow
 from app.domain.schemas import (
-    AccessRequestOut,
     CredentialCatalogItem,
     DirectRevealRequest,
     RevealCredentialResponse,
@@ -92,26 +91,13 @@ def direct_reveal_credential(
     minutes = get_direct_reveal_minutes(db)
     expires_at = now + timedelta(minutes=minutes)
 
-    req = AccessRequest(
-        requester_id=current_user.id,
-        credential_id=credential.id,
-        status=AccessStatus.FULFILLED,
-        reason="direct_reveal",
-        expires_at=expires_at,
-        approved_by=current_user.id,
-        approved_at=now,
-        revealed_at=now,
-    )
-    db.add(req)
-    db.flush()
-
     record_audit(
         db,
         actor_type="user",
         actor_id=str(current_user.id),
         action="direct_reveal_credential",
-        resource_type="access_request",
-        resource_id=req.id,
+        resource_type="credential",
+        resource_id=credential.id,
         details={
             "credential_id": credential.id,
             "server_id": server.id,
@@ -138,18 +124,6 @@ def get_reveal_policy(
     return RevealPolicy(minutes=get_direct_reveal_minutes(db))
 
 
-@router.get("/mine", response_model=list[AccessRequestOut])
-def list_my_requests(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ENGINEER)),
-) -> list[AccessRequest]:
-    if current_user.role == UserRole.ADMIN:
-        return db.scalars(select(AccessRequest).order_by(AccessRequest.created_at.desc())).all()
 
-    return db.scalars(
-        select(AccessRequest)
-        .where(AccessRequest.requester_id == current_user.id)
-        .order_by(AccessRequest.created_at.desc())
-    ).all()
 
 

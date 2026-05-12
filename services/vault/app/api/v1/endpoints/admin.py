@@ -242,8 +242,6 @@ def create_server(
         os_type=payload.os_type,
         host=payload.host,
         port=payload.port,
-        managed_account=payload.managed_account,
-        connection_username=payload.connection_username,
         connection_profile=payload.connection_profile,
     )
     db.add(server)

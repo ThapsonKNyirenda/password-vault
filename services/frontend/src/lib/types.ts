@@ -62,8 +62,6 @@ export interface TargetServer {
   os_type: ServerOS;
   host: string;
   port: number;
-  managed_account: string;
-  connection_username: string;
   connection_profile: string;
   created_at: string;
 }

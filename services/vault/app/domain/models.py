@@ -30,12 +30,7 @@ class ServerOS(str, enum.Enum):
     WINDOWS = "windows"
 
 
-class AccessStatus(str, enum.Enum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    DENIED = "denied"
-    FULFILLED = "fulfilled"
-    EXPIRED = "expired"
+
 
 
 class SyncSource(str, enum.Enum):
@@ -84,8 +79,6 @@ class TargetServer(Base):
     os_type: Mapped[ServerOS] = mapped_column(Enum(ServerOS), index=True)
     host: Mapped[str] = mapped_column(String(255))
     port: Mapped[int] = mapped_column(Integer)
-    managed_account: Mapped[str] = mapped_column(String(120))
-    connection_username: Mapped[str] = mapped_column(String(120))
     connection_profile: Mapped[str] = mapped_column(String(255), default="default")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -112,21 +105,7 @@ class Credential(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
-class AccessRequest(Base):
-    __tablename__ = "access_requests"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    requester_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), index=True)
-    credential_id: Mapped[str] = mapped_column(String(36), ForeignKey("credentials.id"), index=True)
-
-    status: Mapped[AccessStatus] = mapped_column(Enum(AccessStatus), default=AccessStatus.PENDING, index=True)
-    reason: Mapped[str] = mapped_column(Text)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    approved_by: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
-    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    delivery_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    revealed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class AuditLog(Base):

@@ -31,8 +31,6 @@ def create_agent_server_credential(client, admin_token: str) -> tuple[str, str, 
             "os_type": "unix",
             "host": "10.0.0.10",
             "port": 22,
-            "managed_account": "svc_app",
-            "connection_username": "opsadmin",
             "connection_profile": "default",
         },
     )

@@ -45,7 +45,6 @@ import { apiRequest } from "../../lib/api";
 import { getSession } from "../../lib/auth";
 import { formatDate } from "../../lib/format";
 import type {
-    AccessRequest,
     Agent,
     Credential,
     RevealCredentialResponse,
@@ -71,6 +70,8 @@ const roleOptions: Array<{ label: string; value: UserRole }> = [
 
 const TABS = [
     { id: "servers", label: "Servers", icon: <IconServer className="sidebar-link-icon" /> },
+    { id: "agents", label: "Agents", icon: <IconInbox className="sidebar-link-icon" /> },
+    { id: "credentials", label: "Credentials", icon: <IconKey className="sidebar-link-icon" /> },
     { id: "users", label: "Users", icon: <IconUser className="sidebar-link-icon" /> },
     { id: "logs", label: "System Logs", icon: <IconAlert className="sidebar-link-icon" /> },
 ];
@@ -151,7 +152,7 @@ export default function AdminPage(): JSX.Element {
         let filtered = auditLogs;
         if (!searchTerm) return filtered;
         const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(log => 
+        filtered = filtered.filter(log =>
             log.action.toLowerCase().includes(term) ||
             log.actor_type.toLowerCase().includes(term) ||
             log.resource_type.toLowerCase().includes(term) ||
@@ -361,6 +362,107 @@ export default function AdminPage(): JSX.Element {
         }
     }
 
+    const openCreateAgentDialog = (): void => {
+        if (!session) return;
+        const currentSession = session;
+        setDialog({
+            title: "Create Agent",
+            description: "Create a new agent for managing servers.",
+            confirmLabel: "Create Agent",
+            fields: [
+                { name: "name", label: "Agent Name", type: "text", required: true },
+                { name: "site", label: "Site", type: "text", required: true }
+            ],
+            onConfirm: async (values) => {
+                try {
+                    const data = await apiRequest<{ agent: any, api_token: string }>("/admin/agents", {
+                        method: "POST",
+                        token: currentSession.token,
+                        body: JSON.stringify(values)
+                    });
+                    setMessage(`Agent created. API Token: ${data.api_token}`);
+                    setMessageType("success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    setMessage(error instanceof Error ? error.message : "Failed to create agent");
+                    setMessageType("error");
+                    return false;
+                }
+            }
+        });
+    };
+
+    const openCreateServerDialog = (): void => {
+        if (!session) return;
+        const agentOptions = agents.filter(a => a.active).map(a => ({ label: `${a.name} (${a.site})`, value: a.id }));
+
+        setDialog({
+            title: "Create Server",
+            description: "Add a new target server to manage.",
+            confirmLabel: "Create Server",
+            fields: [
+                { name: "name", label: "Server Name", type: "text", required: true },
+                { name: "site", label: "Site", type: "text", required: true },
+                { name: "agent_id", label: "Agent", type: "select", required: true, options: agentOptions },
+                { name: "os_type", label: "OS Type", type: "select", required: true, options: [{ label: "UNIX", value: "unix" }, { label: "Windows", value: "windows" }] },
+                { name: "host", label: "Host", type: "text", required: true },
+                { name: "port", label: "Port", type: "number", defaultValue: "22" },
+                { name: "connection_profile", label: "Connection Profile", type: "select", defaultValue: "default", options: [{ label: "Default", value: "default" }, { label: "SSH Key", value: "ssh_key" }, { label: "Password", value: "password" }] }
+            ],
+            onConfirm: async (values) => {
+                try {
+                    await apiRequest("/admin/servers", {
+                        method: "POST",
+                        token: session.token,
+                        body: JSON.stringify({ ...values, port: parseInt(values.port) })
+                    });
+                    setMessage("Server created");
+                    setMessageType("success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    setMessage(error instanceof Error ? error.message : "Failed to create server");
+                    setMessageType("error");
+                    return false;
+                }
+            }
+        });
+    };
+
+    const openCreateCredentialDialog = (): void => {
+        if (!session) return;
+        const serverOptions = servers.map(s => ({ label: `${s.name} (${s.site})`, value: s.id }));
+
+        setDialog({
+            title: "Create Credential",
+            description: "Add credentials for a managed account on a server.",
+            confirmLabel: "Create Credential",
+            fields: [
+                { name: "server_id", label: "Server", type: "select", required: true, options: serverOptions },
+                { name: "managed_account", label: "Managed Account", type: "text", required: true },
+                { name: "initial_password", label: "Initial Password", type: "password", required: true }
+            ],
+            onConfirm: async (values) => {
+                try {
+                    await apiRequest("/admin/credentials", {
+                        method: "POST",
+                        token: session.token,
+                        body: JSON.stringify(values)
+                    });
+                    setMessage("Credential created");
+                    setMessageType("success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    setMessage(error instanceof Error ? error.message : "Failed to create credential");
+                    setMessageType("error");
+                    return false;
+                }
+            }
+        });
+    };
+
     if (!session) return <div className="layout" />;
 
     const revealPayload = revealData
@@ -412,53 +514,59 @@ export default function AdminPage(): JSX.Element {
 
                         {activeTab === "servers" && (
                             <div>
-                                <div className="mb-4">
+                                <div className="mb-4 flex justify-between items-center">
                                     <SearchInput
                                         value={searchTerm}
                                         onChange={setSearchTerm}
-                                        placeholder="Search servers by name, account, or site..."
+                                        placeholder="Search servers by name, site, or host..."
                                     />
+                                    <div className="flex gap-2">
+                                        <Button onClick={openCreateServerDialog}>
+                                            <IconServer className="w-4 h-4 mr-2" />
+                                            Add Server
+                                        </Button>
+                                    </div>
                                 </div>
                                 <div className="table-wrap">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead
-                                                    className="cursor-pointer hover:bg-muted/50"
-                                                    onClick={() => handleSort("credentials")}
-                                                >
-                                                    <div className="flex items-center gap-1">
-                                                        Account
-                                                        {sortConfig?.key === "credentials" && (
-                                                            <span className="text-xs">
-                                                                {sortConfig.direction === "asc" ? "↑" : "↓"}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </TableHead>
-                                                <TableHead>Target</TableHead>
-                                                <TableHead>Sync</TableHead>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Site</TableHead>
+                                                <TableHead>Host</TableHead>
+                                                <TableHead>OS</TableHead>
+                                                <TableHead>Agent</TableHead>
                                                 <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {filteredCredentials.length === 0 ? (
+                                            {servers.length === 0 ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                                        {searchTerm ? "No credentials found matching your search." : "No credentials available."}
+                                                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                                        No servers configured. Add your first server to get started.
                                                     </TableCell>
                                                 </TableRow>
                                             ) : (
-                                                filteredCredentials.map(c => (
-                                                    <TableRow key={c.id}>
-                                                        <TableCell>{servers.find(s => s.id === c.server_id)?.name ?? c.server_id}</TableCell>
-                                                        <TableCell className="font-medium">{c.managed_account}</TableCell>
+                                                servers.filter(s => {
+                                                    if (!searchTerm) return true;
+                                                    const term = searchTerm.toLowerCase();
+                                                    return s.name.toLowerCase().includes(term) ||
+                                                        s.site.toLowerCase().includes(term) ||
+                                                        s.host.toLowerCase().includes(term);
+                                                }).map(s => (
+                                                    <TableRow key={s.id}>
+                                                        <TableCell className="font-medium">{s.name}</TableCell>
+                                                        <TableCell>{s.site}</TableCell>
+                                                        <TableCell>{s.host}:{s.port}</TableCell>
                                                         <TableCell>
-                                                            <Badge variant="secondary">{c.last_sync_source}</Badge>
+                                                            <Badge variant={s.os_type === "windows" ? "default" : "secondary"}>
+                                                                {s.os_type.toUpperCase()}
+                                                            </Badge>
                                                         </TableCell>
+                                                        <TableCell>{agents.find(a => a.id === s.agent_id)?.name ?? "Unknown"}</TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="ghost" size="icon" onClick={() => openRevealDialog(c)}>
-                                                                <IconEye className="w-4 h-4" />
+                                                            <Button variant="ghost" size="icon">
+                                                                <IconEdit className="w-4 h-4" />
                                                             </Button>
                                                         </TableCell>
                                                     </TableRow>
@@ -470,7 +578,132 @@ export default function AdminPage(): JSX.Element {
                             </div>
                         )}
 
-                        
+                        {activeTab === "agents" && (
+                            <div>
+                                <div className="mb-4 flex justify-between items-center">
+                                    <SearchInput
+                                        value={searchTerm}
+                                        onChange={setSearchTerm}
+                                        placeholder="Search agents by name or site..."
+                                    />
+                                    <Button onClick={openCreateAgentDialog}>
+                                        <IconInbox className="w-4 h-4 mr-2" />
+                                        Add Agent
+                                    </Button>
+                                </div>
+                                <div className="table-wrap">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Site</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Last Seen</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {agents.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                        No agents configured. Add your first agent to get started.
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                agents.filter(a => {
+                                                    if (!searchTerm) return true;
+                                                    const term = searchTerm.toLowerCase();
+                                                    return a.name.toLowerCase().includes(term) ||
+                                                        a.site.toLowerCase().includes(term);
+                                                }).map(a => (
+                                                    <TableRow key={a.id}>
+                                                        <TableCell className="font-medium">{a.name}</TableCell>
+                                                        <TableCell>{a.site}</TableCell>
+                                                        <TableCell>
+                                                            <StatusBadge status={a.active ? "active" : "inactive"} />
+                                                        </TableCell>
+                                                        <TableCell>{a.last_seen_at ? formatDate(a.last_seen_at) : "Never"}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="icon">
+                                                                <IconEdit className="w-4 h-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === "credentials" && (
+                            <div>
+                                <div className="mb-4 flex justify-between items-center">
+                                    <SearchInput
+                                        value={searchTerm}
+                                        onChange={setSearchTerm}
+                                        placeholder="Search credentials by server or account..."
+                                    />
+                                    <Button onClick={openCreateCredentialDialog}>
+                                        <IconKey className="w-4 h-4 mr-2" />
+                                        Add Credential
+                                    </Button>
+                                </div>
+                                <div className="table-wrap">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Server</TableHead>
+                                                <TableHead>Account</TableHead>
+                                                <TableHead>Version</TableHead>
+                                                <TableHead>Last Sync</TableHead>
+                                                <TableHead>Sync Source</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {credentials.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                                        No credentials configured. Add your first credential to get started.
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                credentials.filter(c => {
+                                                    if (!searchTerm) return true;
+                                                    const term = searchTerm.toLowerCase();
+                                                    const server = servers.find(s => s.id === c.server_id);
+                                                    return c.managed_account.toLowerCase().includes(term) ||
+                                                        (server?.name.toLowerCase().includes(term) ?? false);
+                                                }).map(c => {
+                                                    const server = servers.find(s => s.id === c.server_id);
+                                                    const handleReveal = () => openRevealDialog(c);
+                                                    return (
+                                                        <TableRow key={c.id}>
+                                                            <TableCell className="font-medium">{server?.name ?? "Unknown"}</TableCell>
+                                                            <TableCell>{c.managed_account}</TableCell>
+                                                            <TableCell>v{c.version}</TableCell>
+                                                            <TableCell>{formatDate(c.last_synced_at)}</TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="secondary">{c.last_sync_source}</Badge>
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <Button variant="ghost" size="icon" onClick={handleReveal}>
+                                                                    <IconEye className="w-4 h-4" />
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        )}
+
+
 
                         {activeTab === "users" && (
                             <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">

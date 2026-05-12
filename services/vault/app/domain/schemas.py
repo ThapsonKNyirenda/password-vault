@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .models import AccessStatus, ServerOS, SyncSource, UserRole
+from .models import ServerOS, SyncSource, UserRole
 
 
 class LoginRequest(BaseModel):
@@ -67,8 +67,6 @@ class TargetServerCreate(BaseModel):
     os_type: ServerOS
     host: str
     port: int
-    managed_account: str
-    connection_username: str
     connection_profile: str = "default"
 
 
@@ -82,8 +80,6 @@ class TargetServerOut(BaseModel):
     os_type: ServerOS
     host: str
     port: int
-    managed_account: str
-    connection_username: str
     connection_profile: str
     created_at: datetime
 
@@ -109,33 +105,11 @@ class CredentialOut(BaseModel):
     last_sync_source: SyncSource
 
 
-class AccessRequestCreate(BaseModel):
-    credential_id: str
-    reason: str = Field(min_length=5, max_length=2000)
+
 
 
 class DirectRevealRequest(BaseModel):
     credential_id: str
-
-
-class AccessDecisionRequest(BaseModel):
-    expires_minutes: int = Field(default=15, ge=5, le=120)
-    note: str | None = Field(default=None, max_length=400)
-
-
-class AccessRequestOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    requester_id: int
-    credential_id: str
-    status: AccessStatus
-    reason: str
-    expires_at: datetime | None
-    approved_by: int | None
-    approved_at: datetime | None
-    revealed_at: datetime | None
-    created_at: datetime
 
 
 class CredentialCatalogItem(BaseModel):
