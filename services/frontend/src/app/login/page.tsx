@@ -25,30 +25,49 @@ export default function LoginPage(): JSX.Element {
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
+        event.stopPropagation();
+        
+        if (!username.trim() || !password.trim()) {
+            setMessage("Please enter both username and password.");
+            setMessageType("error");
+            setShowValidation(true);
+            return;
+        }
+        
         setLoading(true);
         setMessage("Authenticating...");
         setMessageType("");
+        
+        console.log("Attempting login with:", { username, password: "***" });
+        
         try {
             const payload = await apiRequest<AuthResponse>("/auth/login", {
                 method: "POST",
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username: username.trim(), password: password.trim() }),
             });
+            
+            console.log("Login successful:", payload);
+            
             setSession({ token: payload.access_token, role: payload.role, username: payload.username });
-            router.replace(payload.role === "admin" ? "/admin" : "/engineer");
+            setMessage("Login successful! Redirecting...");
+            setMessageType("");
+            
+            // Small delay to show success message
+            setTimeout(() => {
+                router.replace(payload.role === "admin" ? "/admin" : "/engineer");
+            }, 500);
+            
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Authentication failed");
+            console.error("Login failed:", error);
+            const errorMessage = error instanceof Error ? error.message : "Authentication failed";
+            setMessage(errorMessage);
             setMessageType("error");
         } finally {
             setLoading(false);
         }
     }
 
-    function handleInvalid(event: FormEvent<HTMLFormElement>): void {
-        event.preventDefault();
-        setShowValidation(true);
-        setMessage("Please complete the required fields.");
-        setMessageType("error");
-    }
+    
 
     return (
         <div className="login-shell">
@@ -71,7 +90,6 @@ export default function LoginPage(): JSX.Element {
                     <form
                         className="form-stack"
                         data-validation={showValidation ? "true" : undefined}
-                        onInvalidCapture={handleInvalid}
                         onSubmit={handleSubmit}
                     >
                         <label htmlFor="login-username">

@@ -4,6 +4,10 @@ import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { IconExclamation, IconCheckCircle, IconShield } from "./Icons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export interface ConfirmDialogOption {
     label: string;
@@ -88,94 +92,112 @@ export function ConfirmDialog({
     }
 
     return (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
-            <form
-                className="modal"
-                data-validation={showValidation ? "true" : undefined}
-                onInvalidCapture={handleInvalid}
-                onSubmit={handleSubmit}
-            >
-                <div className="modal-header" style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
-                    <div style={{ 
-                        width: "48px", 
-                        height: "48px", 
-                        borderRadius: "12px", 
-                        background: tone === "danger" ? "var(--danger-dim)" : tone === "success" ? "var(--success-dim)" : "var(--accent-dim)",
-                        display: "grid",
-                        placeItems: "center",
-                        flexShrink: 0
-                    }}>
-                        {getIcon()}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <h3>{title}</h3>
-                        {description ? <p className="lead">{description}</p> : null}
-                    </div>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" role="dialog" aria-modal="true" aria-label={title}>
+            <Card className="w-full max-w-lg">
+                <form
+                    onSubmit={handleSubmit}
+                    onInvalidCapture={handleInvalid}
+                    className="space-y-6"
+                >
+                    <CardHeader>
+                        <div className="flex items-start gap-4">
+                            <div className={cn(
+                                "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                                tone === "danger" ? "bg-red-100" : tone === "success" ? "bg-green-100" : "bg-blue-100"
+                            )}>
+                                {getIcon()}
+                            </div>
+                            <div className="flex-1">
+                                <CardTitle>{title}</CardTitle>
+                                {description && (
+                                    <p className="text-sm text-muted-foreground mt-2">{description}</p>
+                                )}
+                            </div>
+                        </div>
+                    </CardHeader>
 
-                {fields.length > 0 ? (
-                    <div className="modal-fields">
-                        {fields.map((field, index) => {
-                            const value = values[field.name] ?? "";
-                            const sharedProps = {
-                                id: field.name,
-                                name: field.name,
-                                value,
-                                placeholder: field.placeholder,
-                                required: field.required,
-                                onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-                                    setValues((prev) => ({ ...prev, [field.name]: event.target.value })),
-                                autoFocus: index === 0,
-                            };
+                    {fields.length > 0 && (
+                        <CardContent className="space-y-4">
+                            {fields.map((field, index) => {
+                                const value = values[field.name] ?? "";
+                                
+                                return (
+                                    <div key={field.name} className="space-y-2">
+                                        <label htmlFor={field.name} className="text-sm font-medium">
+                                            {field.label}
+                                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                                        </label>
+                                        {field.type === "textarea" ? (
+                                            <textarea
+                                                id={field.name}
+                                                name={field.name}
+                                                value={value}
+                                                placeholder={field.placeholder}
+                                                required={field.required}
+                                                onChange={(e) => setValues((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                                                autoFocus={index === 0}
+                                                className="w-full min-h-[80px] p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        ) : field.type === "select" ? (
+                                            <select
+                                                id={field.name}
+                                                name={field.name}
+                                                value={value}
+                                                required={field.required}
+                                                onChange={(e) => setValues((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                                                autoFocus={index === 0}
+                                                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                {field.options?.map((option) => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <Input
+                                                id={field.name}
+                                                name={field.name}
+                                                type={field.type ?? "text"}
+                                                value={value}
+                                                placeholder={field.placeholder}
+                                                required={field.required}
+                                                min={field.min}
+                                                max={field.max}
+                                                step={field.step}
+                                                onChange={(e) => setValues((prev) => ({ ...prev, [field.name]: e.target.value }))}
+                                                autoFocus={index === 0}
+                                            />
+                                        )}
+                                        {field.helper && (
+                                            <p className="text-xs text-muted-foreground">{field.helper}</p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </CardContent>
+                    )}
 
-                            return (
-                                <label key={field.name} htmlFor={field.name}>
-                                    {field.label}
-                                    {field.type === "textarea" ? (
-                                        <textarea {...sharedProps} />
-                                    ) : field.type === "select" ? (
-                                        <select {...sharedProps}>
-                                            {field.options?.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            {...sharedProps}
-                                            type={field.type ?? "text"}
-                                            min={field.min}
-                                            max={field.max}
-                                            step={field.step}
-                                        />
-                                    )}
-                                    {field.helper ? <span className="field-help">{field.helper}</span> : null}
-                                </label>
-                            );
-                        })}
-                    </div>
-                ) : null}
-
-                <div className="modal-actions">
-                    <button type="button" className="btn btn-ghost" onClick={onClose} disabled={busy}>
-                        {cancelLabel}
-                    </button>
-                    <button 
-                        type="submit" 
-                        className={`btn ${tone === "danger" ? "btn-danger" : tone === "success" ? "btn-success" : "btn-primary"}`} 
-                        disabled={busy}
-                        style={{ minWidth: "120px" }}
-                    >
-                        {busy ? (
-                            <>
-                                <span className="spinner" style={{ width: "16px", height: "16px", borderWidth: "2px" }} />
-                                Working…
-                            </>
-                        ) : confirmLabel}
-                    </button>
-                </div>
-            </form>
+                    <CardContent className="flex gap-3 pt-0">
+                        <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+                            {cancelLabel}
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            variant={tone === "danger" ? "destructive" : "default"}
+                            disabled={busy}
+                            className="min-w-[120px]"
+                        >
+                            {busy ? (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                    Working…
+                                </>
+                            ) : confirmLabel}
+                        </Button>
+                    </CardContent>
+                </form>
+            </Card>
         </div>
     );
 }

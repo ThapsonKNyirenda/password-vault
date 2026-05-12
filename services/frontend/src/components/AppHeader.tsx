@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { clearSession, getSession } from "../lib/auth";
 import { IconLogout, IconShield, IconUser } from "./Icons";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export function AppHeader(): JSX.Element {
     const pathname = usePathname();

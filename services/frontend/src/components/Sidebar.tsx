@@ -1,9 +1,13 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { clearSession } from "../lib/auth";
-import { IconLogout, IconShield } from "./Icons";
+import { IconLogout, IconShield, IconMenu, IconX } from "./Icons";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
     username: string;
@@ -15,54 +19,90 @@ interface SidebarProps {
 
 export function Sidebar({ username, role, activeTab, tabs, onTabChange }: SidebarProps): JSX.Element {
     const router = useRouter();
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    // Close mobile sidebar on route change / tab click
+    useEffect(() => {
+        setMobileOpen(false);
+    }, [activeTab]);
 
     function handleLogout(): void {
         clearSession();
         router.replace("/login");
     }
 
+    function handleTabClick(id: string): void {
+        onTabChange(id);
+        setMobileOpen(false);
+    }
+
     const initials = username.slice(0, 2).toUpperCase();
 
     return (
-        <aside className="sidebar">
-            <div className="sidebar-logo">
-                <div className="sidebar-logo-mark">
-                    <IconShield className="icon-md" />
-                </div>
-                <div className="sidebar-logo-text">
-                    <small>Vault + Agent</small>
-                    <strong>Control Plane</strong>
-                </div>
-            </div>
+        <>
+            {/* Mobile toggle */}
+            <button
+                type="button"
+                className="mobile-menu-toggle"
+                onClick={() => setMobileOpen((v) => !v)}
+                aria-label="Toggle menu"
+            >
+                {mobileOpen ? <IconX className="icon-md" /> : <IconMenu className="icon-md" />}
+            </button>
 
-            <nav className="sidebar-nav">
-                <span className="sidebar-section-label">Navigation</span>
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        type="button"
-                        className={`sidebar-link ${activeTab === tab.id ? "active" : ""}`}
-                        onClick={() => onTabChange(tab.id)}
-                    >
-                        <span className="sidebar-link-icon">{tab.icon}</span>
-                        <span>{tab.label}</span>
-                    </button>
-                ))}
-            </nav>
+            {/* Mobile overlay */}
+            {mobileOpen ? (
+                <div className="mobile-sidebar-overlay" onClick={() => setMobileOpen(false)} />
+            ) : null}
 
-            <div className="sidebar-footer">
-                <div className="sidebar-user" title={`${username} (${role})`}>
-                    <div className="sidebar-avatar">{initials}</div>
-                    <div className="sidebar-user-info">
-                        <span>{username}</span>
-                        <small>{role}</small>
+            <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
+                <div className="sidebar-logo">
+                    <div className="sidebar-logo-mark">
+                        <IconShield className="icon-md" />
                     </div>
+                    <div className="sidebar-logo-text">
+                        <small>Vault + Agent</small>
+                        <strong>Control Plane</strong>
+                    </div>
+                    <button
+                        type="button"
+                        className="mobile-close"
+                        onClick={() => setMobileOpen(false)}
+                        aria-label="Close menu"
+                    >
+                        <IconX className="icon-sm" />
+                    </button>
                 </div>
-                <button type="button" className="logout-btn" onClick={handleLogout}>
-                    <IconLogout className="icon-sm" />
-                    <span>Sign out</span>
-                </button>
-            </div>
-        </aside>
+
+                <nav className="sidebar-nav">
+                    <span className="sidebar-section-label">Navigation</span>
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            className={`sidebar-link ${activeTab === tab.id ? "active" : ""}`}
+                            onClick={() => handleTabClick(tab.id)}
+                        >
+                            <span className="sidebar-link-icon">{tab.icon}</span>
+                            <span>{tab.label}</span>
+                        </button>
+                    ))}
+                </nav>
+
+                <div className="sidebar-footer">
+                    <div className="sidebar-user" title={`${username} (${role})`}>
+                        <div className="sidebar-avatar">{initials}</div>
+                        <div className="sidebar-user-info">
+                            <span>{username}</span>
+                            <small>{role}</small>
+                        </div>
+                    </div>
+                    <button type="button" className="logout-btn" onClick={handleLogout}>
+                        <IconLogout className="icon-sm" />
+                        <span>Sign out</span>
+                    </button>
+                </div>
+            </aside>
+        </>
     );
 }

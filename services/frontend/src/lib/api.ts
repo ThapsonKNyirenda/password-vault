@@ -62,10 +62,14 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers.Authorization = `Bearer ${options.token}`;
   }
 
+  console.log(`API Request: ${options.method || 'GET'} ${url}`);
+  
   const response = await fetch(url, {
     ...options,
     headers,
   });
+
+  console.log(`API Response: ${response.status} ${response.statusText}`);
 
   if (response.status === 204) {
     return null as T;
