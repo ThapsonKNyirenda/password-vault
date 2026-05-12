@@ -5,8 +5,27 @@ import { useRouter } from "next/navigation";
 
 import { Sidebar } from "../../components/Sidebar";
 import { ConfirmDialog, type ConfirmDialogField } from "../../components/ConfirmDialog";
-import { 
-    IconAlert, IconEdit, IconEye, IconRefresh, IconRestore, 
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "../../components/ui/table";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../../components/ui/select";
+import {
+    IconAlert, IconEdit, IconEye, IconRefresh, IconRestore,
     IconTrash, IconUser, IconShield, IconKey, IconLock, IconInbox,
     IconServer, IconCheckCircle, IconExclamation
 } from "../../components/Icons";
@@ -42,9 +61,9 @@ const roleOptions: Array<{ label: string; value: UserRole }> = [
 ];
 
 const TABS = [
-    { id: "requests",  label: "Approvals",   icon: <IconInbox className="sidebar-link-icon" /> },
-    { id: "inventory", label: "Inventory",   icon: <IconServer className="sidebar-link-icon" /> },
-    { id: "users",     label: "Users",       icon: <IconUser className="sidebar-link-icon" /> },
+    { id: "requests", label: "Approvals", icon: <IconInbox className="sidebar-link-icon" /> },
+    { id: "inventory", label: "Inventory", icon: <IconServer className="sidebar-link-icon" /> },
+    { id: "users", label: "Users", icon: <IconUser className="sidebar-link-icon" /> },
 ];
 
 export default function AdminPage(): JSX.Element {
@@ -133,7 +152,7 @@ export default function AdminPage(): JSX.Element {
         if (!session) return;
         setDialog({
             title: "Approve Access",
-            description: `Authorizing access for request ${request.id.slice(0,8)}.`,
+            description: `Authorizing access for request ${request.id.slice(0, 8)}.`,
             confirmLabel: "Approve",
             fields: [{
                 name: "expires_minutes", label: "Validity (minutes)", type: "number",
@@ -160,7 +179,7 @@ export default function AdminPage(): JSX.Element {
         if (!session) return;
         setDialog({
             title: "Deny Access",
-            description: `Revoking request ${request.id.slice(0,8)}.`,
+            description: `Revoking request ${request.id.slice(0, 8)}.`,
             confirmLabel: "Deny", tone: "danger",
             fields: [{ name: "note", label: "Reason", type: "textarea", placeholder: "Unauthorized" }],
             onConfirm: async (values) => {
@@ -229,26 +248,26 @@ export default function AdminPage(): JSX.Element {
                     </header>
 
                     <div className="stats-grid">
-                        <StatCard 
-                            label="Pending Approvals" 
+                        <StatCard
+                            label="Pending Approvals"
                             value={stats.pending}
                             variant={stats.pending > 0 ? "warning" : "success"}
                             icon={<IconExclamation className="icon-lg" />}
                         />
-                        <StatCard 
-                            label="Managed Credentials" 
+                        <StatCard
+                            label="Managed Credentials"
                             value={stats.credentials}
                             variant="accent"
                             icon={<IconKey className="icon-lg" />}
                         />
-                        <StatCard 
-                            label="Active Agents" 
+                        <StatCard
+                            label="Active Agents"
                             value={stats.agents}
                             variant="success"
                             icon={<IconCheckCircle className="icon-lg" />}
                         />
-                        <StatCard 
-                            label="Total Users" 
+                        <StatCard
+                            label="Total Users"
                             value={stats.users}
                             icon={<IconUser className="icon-lg" />}
                         />
@@ -257,104 +276,184 @@ export default function AdminPage(): JSX.Element {
                     <div className="card">
                         <div className="tabs">
                             {TABS.map(t => (
-                                <button key={t.id} className={`tab-btn ${activeTab === t.id ? "active" : ""}`} onClick={() => setActiveTab(t.id)}>{t.label}</button>
+                                <Button key={t.id} variant={activeTab === t.id ? "default" : "ghost"} onClick={() => setActiveTab(t.id)}>{t.label}</Button>
                             ))}
                         </div>
 
                         {activeTab === "requests" && (
                             <div className="table-wrap">
-                                <table>
-                                    <thead><tr><th>Requester</th><th>Credential</th><th>Reason</th><th>Actions</th></tr></thead>
-                                    <tbody>
-                                        {pendingRequests.length === 0 ? <tr className="empty-row"><td colSpan={4}>No pending requests.</td></tr> :
-                                        pendingRequests.map(r => (
-                                            <tr key={r.id}>
-                                                <td><div className="flex-row"><IconUser className="icon-sm" /> <strong>{r.requester_id}</strong></div></td>
-                                                <td><span className="mono-tag">{r.credential_id}</span></td>
-                                                <td style={{ color: "var(--text-muted)" }}>{r.reason}</td>
-                                                <td>
-                                                    <div className="row-actions">
-                                                        <button className="btn-primary btn-sm" onClick={() => openApproveDialog(r)}><IconShield className="icon-sm" /> Approve</button>
-                                                        <button className="btn-danger btn-sm" onClick={() => openDenyDialog(r)}><IconTrash className="icon-sm" /> Deny</button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Requester</TableHead>
+                                            <TableHead>Credential</TableHead>
+                                            <TableHead>Reason</TableHead>
+                                            <TableHead>Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingRequests.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                    No pending requests.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            pendingRequests.map(r => (
+                                                <TableRow key={r.id}>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <IconUser className="w-4 h-4 text-muted-foreground" />
+                                                            <strong>{r.requester_id}</strong>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant="outline">{r.credential_id.slice(0, 16)}...</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground">{r.reason}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button size="sm" onClick={() => openApproveDialog(r)}>
+                                                                <IconShield className="w-4 h-4 mr-2" /> Approve
+                                                            </Button>
+                                                            <Button size="sm" variant="destructive" onClick={() => openDenyDialog(r)}>
+                                                                <IconTrash className="w-4 h-4 mr-2" /> Deny
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
 
                         {activeTab === "inventory" && (
-                            <div className="card-body">
-                                <div className="grid-2">
-                                    <article>
-                                        <div className="flex-between" style={{ marginBottom: "1rem" }}>
-                                            <h3 className="card-title">Credentials</h3>
-                                            <button className="btn btn-ghost btn-sm" onClick={loadInventory}><IconRefresh className="icon-sm" /></button>
-                                        </div>
-                                        <div className="table-wrap" style={{ border: "1px solid var(--border)", borderRadius: "8px" }}>
-                                            <table>
-                                                <thead><tr><th>Target</th><th>Account</th><th>Sync</th><th>Actions</th></tr></thead>
-                                                <tbody>
+                            <CardContent>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <Card>
+                                        <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                            <CardTitle className="text-base font-medium">Credentials</CardTitle>
+                                            <Button variant="ghost" size="sm" onClick={loadInventory}>
+                                                <IconRefresh className="w-4 h-4" />
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Target</TableHead>
+                                                        <TableHead>Account</TableHead>
+                                                        <TableHead>Sync</TableHead>
+                                                        <TableHead className="text-right">Actions</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
                                                     {credentials.map(c => (
-                                                        <tr key={c.id}>
-                                                            <td>{servers.find(s => s.id === c.server_id)?.name ?? c.server_id}</td>
-                                                            <td><strong>{c.managed_account}</strong></td>
-                                                            <td><span className="badge badge-info">{c.last_sync_source}</span></td>
-                                                            <td><button className="btn btn-ghost btn-sm" onClick={() => openRevealDialog(c)}><IconEye className="icon-sm" /></button></td>
-                                                        </tr>
+                                                        <TableRow key={c.id}>
+                                                            <TableCell>{servers.find(s => s.id === c.server_id)?.name ?? c.server_id}</TableCell>
+                                                            <TableCell className="font-medium">{c.managed_account}</TableCell>
+                                                            <TableCell>
+                                                                <Badge variant="secondary">{c.last_sync_source}</Badge>
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <Button variant="ghost" size="icon" onClick={() => openRevealDialog(c)}>
+                                                                    <IconEye className="w-4 h-4" />
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
                                                     ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </article>
-                                    <article>
-                                        <h3 className="card-title" style={{ marginBottom: "1rem" }}>Reveal Output</h3>
-                                        {revealData ? (
-                                            <div className="section-gap">
-                                                <pre className="secret">{revealPayload}</pre>
-                                                <div className="secret-meta">
-                                                    <span className="mono-tag">{revealData.credential_id}</span>
-                                                    <span>Revealed {formatDate(revealTimestamp!)}</span>
-                                                    <button className="btn btn-ghost btn-sm" onClick={() => setRevealData(null)}>Clear</button>
+                                                </TableBody>
+                                            </Table>
+                                        </CardContent>
+                                    </Card>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="text-base font-medium">Reveal Output</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            {revealData ? (
+                                                <div className="space-y-4">
+                                                    <pre className="p-4 bg-muted rounded-md text-sm text-muted-foreground">{revealPayload}</pre>
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <Badge variant="outline">{revealData.credential_id.slice(0, 16)}...</Badge>
+                                                        <span className="text-muted-foreground">Revealed {formatDate(revealTimestamp!)}</span>
+                                                        <Button variant="ghost" size="sm" onClick={() => setRevealData(null)}>Clear</Button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ) : <div className="toast" style={{ justifyContent: "center", padding: "3rem" }}>No reveal active.</div>}
-                                    </article>
+                                            ) : (
+                                                <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-md">
+                                                    <p className="text-muted-foreground">No reveal active.</p>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
                                 </div>
-                            </div>
+                            </CardContent>
                         )}
 
                         {activeTab === "users" && (
-                            <div className="card-body grid-2">
-                                <form className="form-stack" onSubmit={handleCreateUser}>
-                                    <h3 className="card-title">Add User</h3>
-                                    <label>Username <input name="username" required /></label>
-                                    <label>Password <input name="password" type="password" minLength={12} required /></label>
-                                    <label>Role 
-                                        <select name="role" defaultValue="engineer">
-                                            {roleOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                        </select>
-                                    </label>
-                                    <button className="btn-primary" type="submit"><IconUser className="icon-sm" /> Create User</button>
-                                </form>
-                                <div className="table-wrap">
-                                    <h3 className="card-title" style={{ marginBottom: "1rem" }}>Active Directory</h3>
-                                    <table>
-                                        <thead><tr><th>User</th><th>Role</th><th>Status</th></tr></thead>
-                                        <tbody>
-                                            {users.map(u => (
-                                                <tr key={u.id}>
-                                                    <td><strong>{u.username}</strong></td>
-                                                    <td>{u.role}</td>
-                                                    <td><StatusBadge status={u.active ? "active" : "inactive"} /></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                            <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Add User</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <form className="space-y-4" onSubmit={handleCreateUser}>
+                                            <div className="space-y-2">
+                                                <label htmlFor="username">Username</label>
+                                                <Input id="username" name="username" required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label htmlFor="password">Password</label>
+                                                <Input id="password" name="password" type="password" minLength={12} required />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label htmlFor="role">Role</label>
+                                                <Select name="role" defaultValue="engineer">
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a role" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {roleOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <Button type="submit" className="w-full">
+                                                <IconUser className="w-4 h-4 mr-2" /> Create User
+                                            </Button>
+                                        </form>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Active Directory</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>User</TableHead>
+                                                    <TableHead>Role</TableHead>
+                                                    <TableHead>Status</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {users.map(u => (
+                                                    <TableRow key={u.id}>
+                                                        <TableCell className="font-medium">{u.username}</TableCell>
+                                                        <TableCell className="capitalize">{u.role}</TableCell>
+                                                        <TableCell>
+                                                            <StatusBadge status={u.active ? "active" : "inactive"} />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </Card>
+                            </CardContent>
                         )}
                     </div>
                     {message && <div className={`toast ${messageType}`} style={{ marginTop: "1rem" }}>{message}</div>}

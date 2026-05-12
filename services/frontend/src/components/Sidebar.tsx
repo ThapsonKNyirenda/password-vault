@@ -5,9 +5,6 @@ import { useRouter } from "next/navigation";
 
 import { clearSession } from "../lib/auth";
 import { IconLogout, IconShield, IconMenu, IconX } from "./Icons";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 interface SidebarProps {
     username: string;

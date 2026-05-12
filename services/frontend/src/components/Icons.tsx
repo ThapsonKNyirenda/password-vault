@@ -221,3 +221,22 @@ export function IconActivity({ className, ...props }: SVGProps<SVGSVGElement>): 
         </svg>
     );
 }
+
+export function IconX({ className, ...props }: SVGProps<SVGSVGElement>): JSX.Element {
+    return (
+        <svg {...baseProps} className={combineClassName("icon", className)} {...props}>
+            <path d="M6 6l12 12" />
+            <path d="M18 6L6 18" />
+        </svg>
+    );
+}
+
+export function IconMenu({ className, ...props }: SVGProps<SVGSVGElement>): JSX.Element {
+    return (
+        <svg {...baseProps} className={combineClassName("icon", className)} {...props}>
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <line x1="4" y1="6" x2="20" y2="6" />
+            <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+    );
+}

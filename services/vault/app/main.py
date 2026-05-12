@@ -24,7 +24,7 @@ app.add_middleware(
 )
 
 api_prefix = "/api/v1"
-app.include_router(api_v1_router)
+app.include_router(api_v1_router, prefix=api_prefix)
 
 
 @app.on_event("startup")
