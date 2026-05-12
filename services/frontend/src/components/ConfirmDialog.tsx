@@ -57,9 +57,9 @@ export function ConfirmDialog({
 }: ConfirmDialogProps): JSX.Element | null {
     const getIcon = () => {
         if (icon) return icon;
-        if (tone === "danger") return <IconExclamation className="icon-xl" style={{ color: "var(--danger)" }} />;
-        if (tone === "success") return <IconCheckCircle className="icon-xl" style={{ color: "var(--success)" }} />;
-        return <IconShield className="icon-xl" style={{ color: "var(--accent)" }} />;
+        if (tone === "danger") return <IconExclamation className="icon-xl" style={{ color: "hsl(0 62% 50%)" }} />;
+        if (tone === "success") return <IconCheckCircle className="icon-xl" style={{ color: "hsl(142 76% 36%)" }} />;
+        return <IconShield className="icon-xl" style={{ color: "hsl(var(--primary))" }} />;
     };
     const [values, setValues] = useState<Record<string, string>>({});
     const [showValidation, setShowValidation] = useState(false);
@@ -103,7 +103,7 @@ export function ConfirmDialog({
                         <div className="flex items-start gap-4">
                             <div className={cn(
                                 "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
-                                tone === "danger" ? "bg-red-100" : tone === "success" ? "bg-green-100" : "bg-blue-100"
+                                tone === "danger" ? "bg-destructive/10" : tone === "success" ? "bg-green-500/10" : "bg-primary/10"
                             )}>
                                 {getIcon()}
                             </div>
@@ -136,7 +136,7 @@ export function ConfirmDialog({
                                                 required={field.required}
                                                 onChange={(e) => setValues((prev) => ({ ...prev, [field.name]: e.target.value }))}
                                                 autoFocus={index === 0}
-                                                className="w-full min-h-[80px] p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full min-h-[80px] p-3 border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary"
                                             />
                                         ) : field.type === "select" ? (
                                             <select
@@ -146,7 +146,7 @@ export function ConfirmDialog({
                                                 required={field.required}
                                                 onChange={(e) => setValues((prev) => ({ ...prev, [field.name]: e.target.value }))}
                                                 autoFocus={index === 0}
-                                                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                             >
                                                 {field.options?.map((option) => (
                                                     <option key={option.value} value={option.value}>

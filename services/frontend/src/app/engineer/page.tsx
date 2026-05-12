@@ -285,7 +285,7 @@ export default function EngineerPage(): JSX.Element {
                                         ) : activity.map((req) => (
                                             <TableRow key={req.id}>
                                                 <TableCell>
-                                                    <Badge variant="secondary">{req.id.slice(0, 8)}…</Badge>
+                                                    <Badge variant="secondary">Request #{req.id.slice(0, 8)}</Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <StatusBadge status={req.status} />
@@ -306,7 +306,7 @@ export default function EngineerPage(): JSX.Element {
                                     <div className="space-y-4">
                                         <pre className="p-4 bg-muted rounded-md text-sm text-muted-foreground">{revealPayload}</pre>
                                         <div className="flex items-center justify-between text-sm">
-                                            <Badge variant="outline">{revealData.credential_id.slice(0, 16)}...</Badge>
+                                            <Badge variant="outline">{revealData.server_name} - {revealData.managed_account}</Badge>
                                             {countdown && <Badge variant="destructive">{countdown}</Badge>}
                                             {revealExpiresAt && <span className="text-muted-foreground">Expires {formatDate(revealExpiresAt.toISOString())}</span>}
                                             <Button variant="ghost" size="sm" onClick={() => { setRevealData(null); setRevealExpiresAt(null); setCountdown(""); }}>

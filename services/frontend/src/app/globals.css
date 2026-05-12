@@ -719,40 +719,63 @@
   /* Table */
   .table {
     width: 100%;
-    border-collapse: collapse;
-    background: var(--surface);
-    border: 1px solid var(--border-light);
+    border-collapse: separate;
+    border-spacing: 0;
+    background: hsl(var(--card));
+    border: 2px solid hsl(var(--border));
     border-radius: var(--radius);
     overflow: hidden;
+    box-shadow: var(--shadow-sm);
   }
 
   .table th,
   .table td {
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1rem;
     text-align: left;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid hsl(var(--border));
+    border-right: 1px solid hsl(var(--border));
   }
 
   .table th {
-    background: var(--surface2);
+    background: hsl(var(--muted));
     font-weight: 600;
-    color: var(--text);
+    color: hsl(var(--card-foreground));
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    border-bottom: 2px solid hsl(var(--border));
   }
 
   .table td {
-    color: var(--text-muted);
+    color: hsl(var(--foreground));
     font-size: 0.875rem;
   }
 
   .table tbody tr:hover {
-    background: var(--surface2);
+    background: hsl(var(--accent) / 0.05);
   }
 
   .table tbody tr:last-child td {
     border-bottom: none;
+  }
+
+  .table th:last-child,
+  .table td:last-child {
+    border-right: none;
+  }
+
+  .table-wrap {
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+  }
+
+  .table-wrap table {
+    margin: 0;
+    border: none;
+    box-shadow: none;
   }
 
   /* Search */
@@ -765,22 +788,22 @@
   .search-input input {
     width: 100%;
     padding: 0.625rem 1rem 0.625rem 2.5rem;
-    border: 1px solid var(--border-vault);
+    border: 1px solid hsl(var(--border));
     border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--text);
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-size: 0.875rem;
     transition: var(--transition-base);
   }
 
   .search-input input:focus {
     outline: none;
-    border-color: var(--accent-vault);
-    box-shadow: 0 0 0 3px var(--accent-dim);
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
   }
 
   .search-input input::placeholder {
-    color: var(--text-dim);
+    color: hsl(var(--muted-foreground));
   }
 
   .search-icon {
@@ -788,7 +811,7 @@
     left: 0.75rem;
     width: 1rem;
     height: 1rem;
-    color: var(--text-dim);
+    color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
 
@@ -829,7 +852,7 @@
 
   .empty-state-description {
     font-size: 0.875rem;
-    color: var(--text-muted);
+    color: hsl(var(--muted-foreground));
     margin-bottom: 1.5rem;
   }
 
@@ -846,8 +869,8 @@
   }
 
   .dialog-content {
-    background: var(--surface);
-    border: 1px solid var(--border-light);
+    @apply bg-card border-border;
+    border: 1px solid hsl(var(--border));
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-xl);
     max-width: 500px;
@@ -858,23 +881,23 @@
 
   .dialog-header {
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border-vault);
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .dialog-title {
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--text);
+    color: hsl(var(--card-foreground));
   }
 
   .dialog-body {
     padding: 1.5rem;
-    color: var(--text-muted);
+    color: hsl(var(--muted-foreground));
   }
 
   .dialog-footer {
     padding: 1.5rem;
-    border-top: 1px solid var(--border-vault);
+    border-top: 1px solid hsl(var(--border));
     display: flex;
     gap: 0.75rem;
     justify-content: flex-end;
@@ -882,8 +905,8 @@
 
   /* Card */
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border-light);
+    @apply bg-card border-border;
+    border: 1px solid hsl(var(--border));
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow-lg);
@@ -899,13 +922,13 @@
     align-items: center;
     justify-content: space-between;
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border-vault);
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .card-title {
     font-size: 1.125rem;
     font-weight: 600;
-    color: var(--text);
+    color: hsl(var(--card-foreground));
     letter-spacing: -0.01em;
   }
 
@@ -916,14 +939,14 @@
   /* Tabs */
   .tabs {
     display: flex;
-    border-bottom: 1px solid var(--border-vault);
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .tab-btn {
     padding: 0.75rem 1.5rem;
     background: none;
     border: none;
-    color: var(--text-muted);
+    color: hsl(var(--muted-foreground));
     font-weight: 500;
     cursor: pointer;
     transition: var(--transition-base);
@@ -931,13 +954,13 @@
   }
 
   .tab-btn:hover {
-    color: var(--text);
-    background: var(--surface2);
+    color: hsl(var(--card-foreground));
+    background: hsl(var(--muted));
   }
 
   .tab-btn.active {
-    color: var(--accent-vault);
-    border-bottom-color: var(--accent-vault);
+    color: hsl(var(--primary));
+    border-bottom-color: hsl(var(--primary));
   }
 
   /* Icon sizes */

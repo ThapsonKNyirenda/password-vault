@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
+import { SearchInput } from "../../components/SearchInput";
 import {
     Table,
     TableBody,
@@ -62,7 +63,7 @@ const roleOptions: Array<{ label: string; value: UserRole }> = [
 
 const TABS = [
     { id: "requests", label: "Approvals", icon: <IconInbox className="sidebar-link-icon" /> },
-    { id: "inventory", label: "Inventory", icon: <IconServer className="sidebar-link-icon" /> },
+    { id: "inventory", label: "Servers", icon: <IconServer className="sidebar-link-icon" /> },
     { id: "users", label: "Users", icon: <IconUser className="sidebar-link-icon" /> },
 ];
 
@@ -84,6 +85,8 @@ export default function AdminPage(): JSX.Element {
     const [dialog, setDialog] = useState<DialogState | null>(null);
     const [dialogBusy, setDialogBusy] = useState(false);
     const [validation, setValidation] = useState<Record<string, boolean>>({});
+    const [searchTerm, setSearchTerm] = useState("");
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
     const loadPendingRequests = useCallback(async (): Promise<void> => {
         if (!session) return;
@@ -96,7 +99,7 @@ export default function AdminPage(): JSX.Element {
         }
     }, [session]);
 
-    const loadInventory = useCallback(async (): Promise<void> => {
+    const loadServers = useCallback(async (): Promise<void> => {
         if (!session) return;
         try {
             const [agentList, serverList, credentialList] = await Promise.all([
@@ -108,7 +111,7 @@ export default function AdminPage(): JSX.Element {
             setServers(serverList);
             setCredentials(credentialList);
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to load inventory");
+            setMessage(error instanceof Error ? error.message : "Failed to load servers");
             setMessageType("error");
         }
     }, [session]);
@@ -127,8 +130,8 @@ export default function AdminPage(): JSX.Element {
     useEffect(() => {
         if (!session) { router.replace("/login"); return; }
         if (session.role !== "admin") { router.replace("/engineer"); return; }
-        void Promise.all([loadPendingRequests(), loadInventory(), loadUsers()]);
-    }, [loadInventory, loadPendingRequests, loadUsers, router, session]);
+        void Promise.all([loadPendingRequests(), loadServers(), loadUsers()]);
+    }, [loadServers, loadPendingRequests, loadUsers, router, session]);
 
     const stats = useMemo(() => ({
         pending: pendingRequests.length,
@@ -136,6 +139,91 @@ export default function AdminPage(): JSX.Element {
         agents: agents.filter(a => a.active).length,
         users: users.filter(u => u.active).length
     }), [pendingRequests, credentials, agents, users]);
+
+    // Filter data based on search term
+    const filteredPendingRequests = useMemo(() => {
+        let filtered = pendingRequests;
+        if (!searchTerm) return filtered;
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter(req => 
+            req.requester_id.toString().includes(term) ||
+            req.credential_id.toLowerCase().includes(term) ||
+            req.reason.toLowerCase().includes(term)
+        );
+
+        // Apply sorting
+        if (sortConfig && sortConfig.key === 'requests') {
+            filtered = [...filtered].sort((a, b) => {
+                const aValue = a.created_at;
+                const bValue = b.created_at;
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return filtered;
+    }, [pendingRequests, searchTerm, sortConfig]);
+
+    const filteredCredentials = useMemo(() => {
+        let filtered = credentials;
+        if (!searchTerm) return filtered;
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter(c => {
+            const server = servers.find(s => s.id === c.server_id);
+            return c.managed_account.toLowerCase().includes(term) ||
+                   c.server_id.toLowerCase().includes(term) ||
+                   (server?.name.toLowerCase().includes(term) ?? false) ||
+                   (server?.site.toLowerCase().includes(term) ?? false);
+        });
+
+        // Apply sorting
+        if (sortConfig && sortConfig.key === 'credentials') {
+            filtered = [...filtered].sort((a, b) => {
+                const aValue = a.managed_account;
+                const bValue = b.managed_account;
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return filtered;
+    }, [credentials, servers, searchTerm, sortConfig]);
+
+    const filteredUsers = useMemo(() => {
+        let filtered = users;
+        if (!searchTerm) return filtered;
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter(u => 
+            u.username.toLowerCase().includes(term) ||
+            u.role.toLowerCase().includes(term) ||
+            (u.active ? 'active' : 'inactive').includes(term)
+        );
+
+        // Apply sorting
+        if (sortConfig && sortConfig.key === 'users') {
+            filtered = [...filtered].sort((a, b) => {
+                const aValue = a.username;
+                const bValue = b.username;
+                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return filtered;
+    }, [users, searchTerm, sortConfig]);
+
+    // Handle sorting
+    const handleSort = (table: string) => {
+        setSortConfig(current => {
+            if (!current || current.key !== table) {
+                return { key: table, direction: 'asc' };
+            }
+            return {
+                key: table,
+                direction: current.direction === 'asc' ? 'desc' : 'asc'
+            };
+        });
+    };
 
     async function handleDialogConfirm(values: Record<string, string>): Promise<void> {
         if (!dialog) return;
@@ -150,9 +238,16 @@ export default function AdminPage(): JSX.Element {
 
     function openApproveDialog(request: AccessRequest): void {
         if (!session) return;
+        // Find credential details for better description
+        const credential = credentials.find(c => c.id === request.credential_id);
+        const server = servers.find(s => s.id === credential?.server_id);
+        const credentialDisplay = credential && server 
+            ? `${credential.managed_account} on ${server.name}`
+            : "credential access";
+        
         setDialog({
             title: "Approve Access",
-            description: `Authorizing access for request ${request.id.slice(0, 8)}.`,
+            description: `Authorizing access for ${credentialDisplay}.`,
             confirmLabel: "Approve",
             fields: [{
                 name: "expires_minutes", label: "Validity (minutes)", type: "number",
@@ -177,9 +272,16 @@ export default function AdminPage(): JSX.Element {
 
     function openDenyDialog(request: AccessRequest): void {
         if (!session) return;
+        // Find credential details for better description
+        const credential = credentials.find(c => c.id === request.credential_id);
+        const server = servers.find(s => s.id === credential?.server_id);
+        const credentialDisplay = credential && server 
+            ? `${credential.managed_account} on ${server.name}`
+            : "credential access";
+        
         setDialog({
             title: "Deny Access",
-            description: `Revoking request ${request.id.slice(0, 8)}.`,
+            description: `Denying access request for ${credentialDisplay}.`,
             confirmLabel: "Deny", tone: "danger",
             fields: [{ name: "note", label: "Reason", type: "textarea", placeholder: "Unauthorized" }],
             onConfirm: async (values) => {
@@ -283,7 +385,7 @@ export default function AdminPage(): JSX.Element {
         } catch (error) { setMessage(error instanceof Error ? error.message : "Error"); setMessageType("error"); }
     }
 
-    if (!session) return <div className="layout" />;
+    if (!session) return <div className="layout"></div>;
 
     const revealPayload = revealData ? `server=${revealData.server_name}\nmanaged_account=${revealData.managed_account}\npassword=${revealData.password}` : "";
 
@@ -294,7 +396,7 @@ export default function AdminPage(): JSX.Element {
                 <div className="page-shell">
                     <header className="page-header">
                         <h1 className="page-title">Administrative Control</h1>
-                        <p className="page-subtitle">Manage system access, inventory, and users.</p>
+                        <p className="page-subtitle">Manage system access, servers, and users.</p>
                     </header>
 
                     <div className="stats-grid">
@@ -331,34 +433,62 @@ export default function AdminPage(): JSX.Element {
                         </div>
 
                         {activeTab === "requests" && (
-                            <div className="table-wrap">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Requester</TableHead>
-                                            <TableHead>Credential</TableHead>
-                                            <TableHead>Reason</TableHead>
-                                            <TableHead>Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {pendingRequests.length === 0 ? (
+                            <div>
+                                <div className="mb-4">
+                                    <SearchInput
+                                        value={searchTerm}
+                                        onChange={setSearchTerm}
+                                        placeholder="Search requests by user, credential, or reason..."
+                                    />
+                                </div>
+                                <div className="table-wrap">
+                                    <Table>
+                                        <TableHeader>
                                             <TableRow>
-                                                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                                                    No pending requests.
-                                                </TableCell>
+                                                <TableHead 
+                                                    className="cursor-pointer hover:bg-muted/50"
+                                                    onClick={() => handleSort('requests')}
+                                                >
+                                                    <div className="flex items-center gap-1">
+                                                        Requester
+                                                        {sortConfig?.key === 'requests' && (
+                                                            <span className="text-xs">
+                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </TableHead>
+                                                <TableHead>Credential</TableHead>
+                                                <TableHead>Reason</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
-                                        ) : (
-                                            pendingRequests.map(r => (
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredPendingRequests.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                        {searchTerm ? "No requests found matching your search." : "No pending requests."}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                filteredPendingRequests.map(r => (
                                                 <TableRow key={r.id}>
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <IconUser className="w-4 h-4 text-muted-foreground" />
-                                                            <strong>{r.requester_id}</strong>
+                                                            <strong>User #{r.requester_id}</strong>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Badge variant="outline">{r.credential_id.slice(0, 16)}...</Badge>
+                                                        <Badge variant="outline">
+                                                            {(() => {
+                                                                const credential = credentials.find(c => c.id === r.credential_id);
+                                                                const server = servers.find(s => s.id === credential?.server_id);
+                                                                return server && credential 
+                                                                    ? `${credential.managed_account}@${server.name}`
+                                                                    : `Request #${r.id.slice(0, 8)}`;
+                                                            })()}
+                                                        </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-muted-foreground">{r.reason}</TableCell>
                                                     <TableCell>
@@ -385,22 +515,48 @@ export default function AdminPage(): JSX.Element {
                                     <Card>
                                         <CardHeader className="flex flex-row items-center justify-between pb-2">
                                             <CardTitle className="text-base font-medium">Credentials</CardTitle>
-                                            <Button variant="ghost" size="sm" onClick={loadInventory}>
+                                            <Button variant="ghost" size="sm" onClick={loadServers}>
                                                 <IconRefresh className="w-4 h-4" />
                                             </Button>
                                         </CardHeader>
                                         <CardContent>
+                                            <div className="mb-4">
+                                                <SearchInput
+                                                    value={searchTerm}
+                                                    onChange={setSearchTerm}
+                                                    placeholder="Search credentials by server, account, or site..."
+                                                />
+                                            </div>
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
+                                                        <TableHead 
+                                                            className="cursor-pointer hover:bg-muted/50"
+                                                            onClick={() => handleSort('credentials')}
+                                                        >
+                                                            <div className="flex items-center gap-1">
+                                                                Account
+                                                                {sortConfig?.key === 'credentials' && (
+                                                                    <span className="text-xs">
+                                                                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </TableHead>
                                                         <TableHead>Target</TableHead>
-                                                        <TableHead>Account</TableHead>
                                                         <TableHead>Sync</TableHead>
                                                         <TableHead className="text-right">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {credentials.map(c => (
+                                                    {filteredCredentials.length === 0 ? (
+                                                        <TableRow>
+                                                            <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                                {searchTerm ? "No credentials found matching your search." : "No credentials available."}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ) : (
+                                                        filteredCredentials.map(c => (
                                                         <TableRow key={c.id}>
                                                             <TableCell>{servers.find(s => s.id === c.server_id)?.name ?? c.server_id}</TableCell>
                                                             <TableCell className="font-medium">{c.managed_account}</TableCell>
@@ -427,7 +583,7 @@ export default function AdminPage(): JSX.Element {
                                                 <div className="space-y-4">
                                                     <pre className="p-4 bg-muted rounded-md text-sm text-muted-foreground">{revealPayload}</pre>
                                                     <div className="flex items-center justify-between text-sm">
-                                                        <Badge variant="outline">{revealData.credential_id.slice(0, 16)}...</Badge>
+                                                        <Badge variant="outline">{revealData.server_name} - {revealData.managed_account}</Badge>
                                                         <span className="text-muted-foreground">Revealed {formatDate(revealTimestamp!)}</span>
                                                         <Button variant="ghost" size="sm" onClick={() => setRevealData(null)}>Clear</Button>
                                                     </div>
@@ -478,20 +634,46 @@ export default function AdminPage(): JSX.Element {
                                 </Card>
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Active Directory</CardTitle>
+                                        <CardTitle>Users</CardTitle>
                                     </CardHeader>
                                     <CardContent>
+                                        <div className="mb-4">
+                                            <SearchInput
+                                                value={searchTerm}
+                                                onChange={setSearchTerm}
+                                                placeholder="Search users by name, role, or status..."
+                                            />
+                                        </div>
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead>User</TableHead>
+                                                    <TableHead 
+                                                        className="cursor-pointer hover:bg-muted/50"
+                                                        onClick={() => handleSort('users')}
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            User
+                                                            {sortConfig?.key === 'users' && (
+                                                                <span className="text-xs">
+                                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </TableHead>
                                                     <TableHead>Role</TableHead>
                                                     <TableHead>Status</TableHead>
                                                     <TableHead className="text-right">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {users.map(u => (
+                                                {filteredUsers.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                                            {searchTerm ? "No users found matching your search." : "No users found."}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    filteredUsers.map(u => (
                                                     <TableRow key={u.id}>
                                                         <TableCell className="font-medium">{u.username}</TableCell>
                                                         <TableCell className="capitalize">{u.role}</TableCell>
