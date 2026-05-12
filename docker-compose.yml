@@ -46,7 +46,7 @@ services:
     build:
       context: ./services/frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: http://192.168.240.133:8000/api/v1
+        NEXT_PUBLIC_API_BASE_URL: http://vault:8000/api/v1
 
     image: localhost/vault-system_frontend:latest
     container_name: vault-frontend
@@ -59,7 +59,7 @@ services:
       - "3000:3000"
 
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://192.168.240.133:8000/api/v1
+      NEXT_PUBLIC_API_BASE_URL: http://vault:8000/api/v1
 
   agent:
     build:
