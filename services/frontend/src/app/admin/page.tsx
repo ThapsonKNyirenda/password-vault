@@ -26,9 +26,17 @@ import {
     SelectValue,
 } from "../../components/ui/select";
 import {
-    IconAlert, IconEdit, IconEye, IconRefresh, IconRestore,
-    IconTrash, IconUser, IconShield, IconKey, IconLock, IconInbox,
-    IconServer, IconCheckCircle, IconExclamation
+    IconEdit,
+    IconEye,
+    IconRefresh,
+    IconTrash,
+    IconUser,
+    IconShield,
+    IconKey,
+    IconInbox,
+    IconServer,
+    IconCheckCircle,
+    IconExclamation,
 } from "../../components/Icons";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -38,7 +46,6 @@ import { formatDate } from "../../lib/format";
 import type {
     AccessRequest,
     Agent,
-    AgentCreateResponse,
     Credential,
     RevealCredentialResponse,
     TargetServer,
@@ -71,7 +78,7 @@ export default function AdminPage(): JSX.Element {
     const router = useRouter();
     const session = useMemo(() => getSession(), []);
 
-    const [activeTab, setActiveTab] = useState("requests");
+    const [activeTab, setActiveTab] = useState<string>("requests");
     const [pendingRequests, setPendingRequests] = useState<AccessRequest[]>([]);
     const [agents, setAgents] = useState<Agent[]>([]);
     const [servers, setServers] = useState<TargetServer[]>([]);
@@ -84,9 +91,8 @@ export default function AdminPage(): JSX.Element {
     const [revealTimestamp, setRevealTimestamp] = useState<string | null>(null);
     const [dialog, setDialog] = useState<DialogState | null>(null);
     const [dialogBusy, setDialogBusy] = useState(false);
-    const [validation, setValidation] = useState<Record<string, boolean>>({});
     const [searchTerm, setSearchTerm] = useState("");
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
 
     const loadPendingRequests = useCallback(async (): Promise<void> => {
         if (!session) return;
@@ -140,24 +146,22 @@ export default function AdminPage(): JSX.Element {
         users: users.filter(u => u.active).length
     }), [pendingRequests, credentials, agents, users]);
 
-    // Filter data based on search term
     const filteredPendingRequests = useMemo(() => {
         let filtered = pendingRequests;
         if (!searchTerm) return filtered;
         const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(req => 
+        filtered = filtered.filter(req =>
             req.requester_id.toString().includes(term) ||
             req.credential_id.toLowerCase().includes(term) ||
             req.reason.toLowerCase().includes(term)
         );
 
-        // Apply sorting
-        if (sortConfig && sortConfig.key === 'requests') {
+        if (sortConfig && sortConfig.key === "requests") {
             filtered = [...filtered].sort((a, b) => {
                 const aValue = a.created_at;
                 const bValue = b.created_at;
-                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
                 return 0;
             });
         }
@@ -171,18 +175,17 @@ export default function AdminPage(): JSX.Element {
         filtered = filtered.filter(c => {
             const server = servers.find(s => s.id === c.server_id);
             return c.managed_account.toLowerCase().includes(term) ||
-                   c.server_id.toLowerCase().includes(term) ||
-                   (server?.name.toLowerCase().includes(term) ?? false) ||
-                   (server?.site.toLowerCase().includes(term) ?? false);
+                c.server_id.toLowerCase().includes(term) ||
+                (server?.name.toLowerCase().includes(term) ?? false) ||
+                (server?.site.toLowerCase().includes(term) ?? false);
         });
 
-        // Apply sorting
-        if (sortConfig && sortConfig.key === 'credentials') {
+        if (sortConfig && sortConfig.key === "credentials") {
             filtered = [...filtered].sort((a, b) => {
                 const aValue = a.managed_account;
                 const bValue = b.managed_account;
-                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
                 return 0;
             });
         }
@@ -193,34 +196,32 @@ export default function AdminPage(): JSX.Element {
         let filtered = users;
         if (!searchTerm) return filtered;
         const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(u => 
+        filtered = filtered.filter(u =>
             u.username.toLowerCase().includes(term) ||
             u.role.toLowerCase().includes(term) ||
-            (u.active ? 'active' : 'inactive').includes(term)
+            (u.active ? "active" : "inactive").includes(term)
         );
 
-        // Apply sorting
-        if (sortConfig && sortConfig.key === 'users') {
+        if (sortConfig && sortConfig.key === "users") {
             filtered = [...filtered].sort((a, b) => {
                 const aValue = a.username;
                 const bValue = b.username;
-                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+                if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
                 return 0;
             });
         }
         return filtered;
     }, [users, searchTerm, sortConfig]);
 
-    // Handle sorting
     const handleSort = (table: string) => {
         setSortConfig(current => {
             if (!current || current.key !== table) {
-                return { key: table, direction: 'asc' };
+                return { key: table, direction: "asc" };
             }
             return {
                 key: table,
-                direction: current.direction === 'asc' ? 'desc' : 'asc'
+                direction: current.direction === "asc" ? "desc" : "asc"
             };
         });
     };
@@ -231,20 +232,19 @@ export default function AdminPage(): JSX.Element {
         try {
             const ok = await dialog.onConfirm(values);
             if (ok !== false) setDialog(null);
-        } finally { setDialogBusy(false); }
+        } finally {
+            setDialogBusy(false);
+        }
     }
-
-    // --- Actions ---
 
     function openApproveDialog(request: AccessRequest): void {
         if (!session) return;
-        // Find credential details for better description
         const credential = credentials.find(c => c.id === request.credential_id);
         const server = servers.find(s => s.id === credential?.server_id);
-        const credentialDisplay = credential && server 
+        const credentialDisplay = credential && server
             ? `${credential.managed_account} on ${server.name}`
             : "credential access";
-        
+
         setDialog({
             title: "Approve Access",
             description: `Authorizing access for ${credentialDisplay}.`,
@@ -256,15 +256,18 @@ export default function AdminPage(): JSX.Element {
             onConfirm: async (values) => {
                 try {
                     await apiRequest(`/access-requests/${request.id}/approve`, {
-                        method: "POST", token: session.token,
+                        method: "POST",
+                        token: session.token,
                         body: JSON.stringify({ expires_minutes: Number(values.expires_minutes) })
                     });
-                    setMessage("Request approved"); setMessageType("success");
+                    setMessage("Request approved");
+                    setMessageType("success");
                     await loadPendingRequests();
                     return true;
                 } catch (error) {
                     setMessage(error instanceof Error ? error.message : "Failed to approve");
-                    setMessageType("error"); return false;
+                    setMessageType("error");
+                    return false;
                 }
             }
         });
@@ -272,29 +275,33 @@ export default function AdminPage(): JSX.Element {
 
     function openDenyDialog(request: AccessRequest): void {
         if (!session) return;
-        // Find credential details for better description
         const credential = credentials.find(c => c.id === request.credential_id);
         const server = servers.find(s => s.id === credential?.server_id);
-        const credentialDisplay = credential && server 
+        const credentialDisplay = credential && server
             ? `${credential.managed_account} on ${server.name}`
             : "credential access";
-        
+
         setDialog({
             title: "Deny Access",
             description: `Denying access request for ${credentialDisplay}.`,
-            confirmLabel: "Deny", tone: "danger",
+            confirmLabel: "Deny",
+            tone: "danger",
             fields: [{ name: "note", label: "Reason", type: "textarea", placeholder: "Unauthorized" }],
             onConfirm: async (values) => {
                 try {
                     await apiRequest(`/access-requests/${request.id}/deny`, {
-                        method: "POST", token: session.token, body: JSON.stringify({ note: values.note })
+                        method: "POST",
+                        token: session.token,
+                        body: JSON.stringify({ note: values.note })
                     });
-                    setMessage("Request denied"); setMessageType("success");
+                    setMessage("Request denied");
+                    setMessageType("success");
                     await loadPendingRequests();
                     return true;
                 } catch (error) {
                     setMessage(error instanceof Error ? error.message : "Failed to deny");
-                    setMessageType("error"); return false;
+                    setMessageType("error");
+                    return false;
                 }
             }
         });
@@ -305,16 +312,20 @@ export default function AdminPage(): JSX.Element {
         setDialog({
             title: "Emergency Reveal",
             description: `Decrypting password for ${credential.managed_account} on ${serverName ?? credential.server_id}. This action is audited.`,
-            confirmLabel: "Reveal Password", tone: "danger",
+            confirmLabel: "Reveal Password",
+            tone: "danger",
             onConfirm: async () => {
                 try {
                     const data = await apiRequest<RevealCredentialResponse>(`/admin/credentials/${credential.id}/reveal`, { token: session.token });
-                    setRevealData(data); setRevealTimestamp(new Date().toISOString());
-                    setMessage("Password revealed and audited."); setMessageType("success");
+                    setRevealData(data);
+                    setRevealTimestamp(new Date().toISOString());
+                    setMessage("Password revealed and audited.");
+                    setMessageType("success");
                     return true;
                 } catch (error) {
                     setMessage(error instanceof Error ? error.message : "Failed to reveal");
-                    setMessageType("error"); return false;
+                    setMessageType("error");
+                    return false;
                 }
             }
         });
@@ -332,19 +343,44 @@ export default function AdminPage(): JSX.Element {
             ],
             onConfirm: async (values) => {
                 try {
-                    const payload: UserUpdatePayload = {
-                        role: values.role as UserRole,
-                        active: values.active === "active"
-                    };
-                    await apiRequest(`/admin/users/${user.id}`, {
-                        method: "PATCH", token: session.token, body: JSON.stringify(payload)
-                    });
-                    setMessage("User updated"); setMessageType("success");
+                    const nextRole = values.role as UserRole;
+                    const nextActive = values.active === "active";
+                    const requests: Promise<unknown>[] = [];
+
+                    if (nextRole !== user.role) {
+                        const payload: UserUpdatePayload = { role: nextRole };
+                        requests.push(apiRequest(`/admin/users/${user.id}`, {
+                            method: "PATCH",
+                            token: session.token,
+                            body: JSON.stringify(payload)
+                        }));
+                    }
+
+                    if (nextActive !== user.active) {
+                        const endpoint = nextActive
+                            ? `/admin/users/${user.id}/restore`
+                            : `/admin/users/${user.id}/deactivate`;
+                        requests.push(apiRequest(endpoint, {
+                            method: "POST",
+                            token: session.token
+                        }));
+                    }
+
+                    if (requests.length === 0) {
+                        setMessage("No changes to save");
+                        setMessageType("success");
+                        return true;
+                    }
+
+                    await Promise.all(requests);
+                    setMessage("User updated");
+                    setMessageType("success");
                     await loadUsers();
                     return true;
                 } catch (error) {
                     setMessage(error instanceof Error ? error.message : "Failed to update user");
-                    setMessageType("error"); return false;
+                    setMessageType("error");
+                    return false;
                 }
             }
         });
@@ -355,39 +391,49 @@ export default function AdminPage(): JSX.Element {
         setDialog({
             title: "Delete User",
             description: `Permanently deleting user ${user.username}. This action cannot be undone.`,
-            confirmLabel: "Delete User", tone: "danger",
+            confirmLabel: "Delete User",
+            tone: "danger",
             onConfirm: async () => {
                 try {
                     await apiRequest(`/admin/users/${user.id}`, { method: "DELETE", token: session.token });
-                    setMessage("User deleted"); setMessageType("success");
+                    setMessage("User deleted");
+                    setMessageType("success");
                     await loadUsers();
                     return true;
                 } catch (error) {
                     setMessage(error instanceof Error ? error.message : "Failed to delete user");
-                    setMessageType("error"); return false;
+                    setMessageType("error");
+                    return false;
                 }
             }
         });
     }
 
-    // --- Form Handlers (Simplified for brevity) ---
-
     async function handleCreateUser(e: FormEvent<HTMLFormElement>) {
-        e.preventDefault(); if (!session) return;
+        e.preventDefault();
+        if (!session) return;
         const fd = new FormData(e.currentTarget);
         try {
             await apiRequest("/admin/users", {
-                method: "POST", token: session.token,
+                method: "POST",
+                token: session.token,
                 body: JSON.stringify(Object.fromEntries(fd))
             });
-            setMessage("User created"); setMessageType("success");
-            e.currentTarget.reset(); await loadUsers();
-        } catch (error) { setMessage(error instanceof Error ? error.message : "Error"); setMessageType("error"); }
+            setMessage("User created");
+            setMessageType("success");
+            e.currentTarget.reset();
+            await loadUsers();
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : "Error");
+            setMessageType("error");
+        }
     }
 
-    if (!session) return <div className="layout"></div>;
+    if (!session) return <div className="layout" />;
 
-    const revealPayload = revealData ? `server=${revealData.server_name}\nmanaged_account=${revealData.managed_account}\npassword=${revealData.password}` : "";
+    const revealPayload = revealData
+        ? `server=${revealData.server_name}\nmanaged_account=${revealData.managed_account}\npassword=${revealData.password}`
+        : "";
 
     return (
         <div className="layout">
@@ -445,15 +491,15 @@ export default function AdminPage(): JSX.Element {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead 
+                                                <TableHead
                                                     className="cursor-pointer hover:bg-muted/50"
-                                                    onClick={() => handleSort('requests')}
+                                                    onClick={() => handleSort("requests")}
                                                 >
                                                     <div className="flex items-center gap-1">
                                                         Requester
-                                                        {sortConfig?.key === 'requests' && (
+                                                        {sortConfig?.key === "requests" && (
                                                             <span className="text-xs">
-                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                                {sortConfig.direction === "asc" ? "↑" : "↓"}
                                                             </span>
                                                         )}
                                                     </div>
@@ -472,40 +518,41 @@ export default function AdminPage(): JSX.Element {
                                                 </TableRow>
                                             ) : (
                                                 filteredPendingRequests.map(r => (
-                                                <TableRow key={r.id}>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <IconUser className="w-4 h-4 text-muted-foreground" />
-                                                            <strong>User #{r.requester_id}</strong>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline">
-                                                            {(() => {
-                                                                const credential = credentials.find(c => c.id === r.credential_id);
-                                                                const server = servers.find(s => s.id === credential?.server_id);
-                                                                return server && credential 
-                                                                    ? `${credential.managed_account}@${server.name}`
-                                                                    : `Request #${r.id.slice(0, 8)}`;
-                                                            })()}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground">{r.reason}</TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <Button size="sm" onClick={() => openApproveDialog(r)}>
-                                                                <IconShield className="w-4 h-4 mr-2" /> Approve
-                                                            </Button>
-                                                            <Button size="sm" variant="destructive" onClick={() => openDenyDialog(r)}>
-                                                                <IconTrash className="w-4 h-4 mr-2" /> Deny
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                                    <TableRow key={r.id}>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2">
+                                                                <IconUser className="w-4 h-4 text-muted-foreground" />
+                                                                <strong>User #{r.requester_id}</strong>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline">
+                                                                {(() => {
+                                                                    const credential = credentials.find(c => c.id === r.credential_id);
+                                                                    const server = servers.find(s => s.id === credential?.server_id);
+                                                                    return server && credential
+                                                                        ? `${credential.managed_account}@${server.name}`
+                                                                        : `Request #${r.id.slice(0, 8)}`;
+                                                                })()}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-muted-foreground">{r.reason}</TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2">
+                                                                <Button size="sm" onClick={() => openApproveDialog(r)}>
+                                                                    <IconShield className="w-4 h-4 mr-2" /> Approve
+                                                                </Button>
+                                                                <Button size="sm" variant="destructive" onClick={() => openDenyDialog(r)}>
+                                                                    <IconTrash className="w-4 h-4 mr-2" /> Deny
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             </div>
                         )}
 
@@ -530,15 +577,15 @@ export default function AdminPage(): JSX.Element {
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead 
+                                                        <TableHead
                                                             className="cursor-pointer hover:bg-muted/50"
-                                                            onClick={() => handleSort('credentials')}
+                                                            onClick={() => handleSort("credentials")}
                                                         >
                                                             <div className="flex items-center gap-1">
                                                                 Account
-                                                                {sortConfig?.key === 'credentials' && (
+                                                                {sortConfig?.key === "credentials" && (
                                                                     <span className="text-xs">
-                                                                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                                        {sortConfig.direction === "asc" ? "↑" : "↓"}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -557,19 +604,20 @@ export default function AdminPage(): JSX.Element {
                                                         </TableRow>
                                                     ) : (
                                                         filteredCredentials.map(c => (
-                                                        <TableRow key={c.id}>
-                                                            <TableCell>{servers.find(s => s.id === c.server_id)?.name ?? c.server_id}</TableCell>
-                                                            <TableCell className="font-medium">{c.managed_account}</TableCell>
-                                                            <TableCell>
-                                                                <Badge variant="secondary">{c.last_sync_source}</Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-right">
-                                                                <Button variant="ghost" size="icon" onClick={() => openRevealDialog(c)}>
-                                                                    <IconEye className="w-4 h-4" />
-                                                                </Button>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
+                                                            <TableRow key={c.id}>
+                                                                <TableCell>{servers.find(s => s.id === c.server_id)?.name ?? c.server_id}</TableCell>
+                                                                <TableCell className="font-medium">{c.managed_account}</TableCell>
+                                                                <TableCell>
+                                                                    <Badge variant="secondary">{c.last_sync_source}</Badge>
+                                                                </TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <Button variant="ghost" size="icon" onClick={() => openRevealDialog(c)}>
+                                                                        <IconEye className="w-4 h-4" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))
+                                                    )}
                                                 </TableBody>
                                             </Table>
                                         </CardContent>
@@ -584,7 +632,8 @@ export default function AdminPage(): JSX.Element {
                                                     <pre className="p-4 bg-muted rounded-md text-sm text-muted-foreground">{revealPayload}</pre>
                                                     <div className="flex items-center justify-between text-sm">
                                                         <Badge variant="outline">{revealData.server_name} - {revealData.managed_account}</Badge>
-                                                        <span className="text-muted-foreground">Revealed {formatDate(revealTimestamp!)}</span>
+                                                        <span className="text-muted-foreground">Revealed {formatDate(revealTimestamp!)}
+                                                        </span>
                                                         <Button variant="ghost" size="sm" onClick={() => setRevealData(null)}>Clear</Button>
                                                     </div>
                                                 </div>
@@ -622,7 +671,9 @@ export default function AdminPage(): JSX.Element {
                                                         <SelectValue placeholder="Select a role" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {roleOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                                                        {roleOptions.map(o => (
+                                                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                                        ))}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -647,15 +698,15 @@ export default function AdminPage(): JSX.Element {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead 
+                                                    <TableHead
                                                         className="cursor-pointer hover:bg-muted/50"
-                                                        onClick={() => handleSort('users')}
+                                                        onClick={() => handleSort("users")}
                                                     >
                                                         <div className="flex items-center gap-1">
                                                             User
-                                                            {sortConfig?.key === 'users' && (
+                                                            {sortConfig?.key === "users" && (
                                                                 <span className="text-xs">
-                                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                                    {sortConfig.direction === "asc" ? "↑" : "↓"}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -674,22 +725,33 @@ export default function AdminPage(): JSX.Element {
                                                     </TableRow>
                                                 ) : (
                                                     filteredUsers.map(u => (
-                                                    <TableRow key={u.id}>
-                                                        <TableCell className="font-medium">{u.username}</TableCell>
-                                                        <TableCell className="capitalize">{u.role}</TableCell>
-                                                        <TableCell>
-                                                            <StatusBadge status={u.active ? "active" : "inactive"} />
-                                                        </TableCell>
-                                                        <TableCell className="text-right">
-                                                            <Button variant="ghost" size="icon" onClick={() => openEditUserDialog(u)} disabled={u.id === session.id}>
-                                                                <IconEdit className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" onClick={() => openDeleteUserDialog(u)} disabled={u.id === session.id}>
-                                                                <IconTrash className="w-4 h-4" />
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
+                                                        <TableRow key={u.id}>
+                                                            <TableCell className="font-medium">{u.username}</TableCell>
+                                                            <TableCell className="capitalize">{u.role}</TableCell>
+                                                            <TableCell>
+                                                                <StatusBadge status={u.active ? "active" : "inactive"} />
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => openEditUserDialog(u)}
+                                                                    disabled={u.username === session.username}
+                                                                >
+                                                                    <IconEdit className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => openDeleteUserDialog(u)}
+                                                                    disabled={u.username === session.username}
+                                                                >
+                                                                    <IconTrash className="w-4 h-4" />
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                )}
                                             </TableBody>
                                         </Table>
                                     </CardContent>
@@ -700,7 +762,17 @@ export default function AdminPage(): JSX.Element {
                     {message && <div className={`toast ${messageType}`} style={{ marginTop: "1rem" }}>{message}</div>}
                 </div>
             </main>
-            <ConfirmDialog open={Boolean(dialog)} title={dialog?.title ?? ""} description={dialog?.description} confirmLabel={dialog?.confirmLabel} tone={dialog?.tone} fields={dialog?.fields} busy={dialogBusy} onConfirm={handleDialogConfirm} onClose={() => setDialog(null)} />
+            <ConfirmDialog
+                open={Boolean(dialog)}
+                title={dialog?.title ?? ""}
+                description={dialog?.description}
+                confirmLabel={dialog?.confirmLabel}
+                tone={dialog?.tone}
+                fields={dialog?.fields}
+                busy={dialogBusy}
+                onConfirm={handleDialogConfirm}
+                onClose={() => setDialog(null)}
+            />
         </div>
     );
 }
