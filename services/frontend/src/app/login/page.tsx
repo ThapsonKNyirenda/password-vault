@@ -29,33 +29,33 @@ export default function LoginPage(): JSX.Element {
     async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         event.stopPropagation();
-        
+
         if (!username.trim() || !password.trim()) {
             setMessage("Please enter both username and password.");
             setMessageType("error");
             setShowValidation(true);
             return;
         }
-        
+
         setLoading(true);
         setMessage("Authenticating...");
         setMessageType("");
-        
+
         try {
             const payload = await apiRequest<AuthResponse>("/auth/login", {
                 method: "POST",
                 body: JSON.stringify({ username: username.trim(), password: password.trim() }),
             });
-            
+
             setSession({ token: payload.access_token, role: payload.role, username: payload.username });
             setMessage("Login successful! Redirecting...");
             setMessageType("");
-            
+
             // Small delay to show success message
             setTimeout(() => {
                 router.replace(payload.role === "admin" ? "/admin" : "/engineer");
             }, 500);
-            
+
         } catch (error) {
             console.error("Login failed:", error);
             const errorMessage = error instanceof Error ? error.message : "Authentication failed";
@@ -66,7 +66,7 @@ export default function LoginPage(): JSX.Element {
         }
     }
 
-    
+
 
     return (
         <div className="login-shell">
@@ -77,7 +77,7 @@ export default function LoginPage(): JSX.Element {
                 <div className="login-box">
                     <div className="login-logo">
                         <div className="login-logo-mark">
-                            <Image src="/brand/mitra-logo-full.svg" alt="Mitra Systems" width={190} height={80} priority />
+                            <Image src="/brand/mitra-logo.png" alt="Mitra Systems" width={190} height={80} priority />
                         </div>
                     </div>
 
