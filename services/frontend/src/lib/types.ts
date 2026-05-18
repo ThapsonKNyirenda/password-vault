@@ -92,6 +92,28 @@ export interface AgentCreateResponse {
   api_token: string;
 }
 
+export interface AgentUpdatePayload {
+  name?: string;
+  site?: string;
+  active?: boolean;
+}
+
+export interface TargetServerUpdatePayload {
+  name?: string;
+  site?: string;
+  agent_id?: string;
+  os_type?: ServerOS;
+  host?: string;
+  port?: number;
+  connection_profile?: string;
+}
+
+export interface CredentialUpdatePayload {
+  server_id?: string;
+  managed_account?: string;
+  password?: string;
+}
+
 export interface User {
   id: number;
   username: string;

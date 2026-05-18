@@ -42,15 +42,19 @@ import {
 } from "../../components/Icons";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useToast } from "../../components/ToastProvider";
 import { apiRequest } from "../../lib/api";
 import { getSession } from "../../lib/auth";
 import { formatDate } from "../../lib/format";
 import type {
     Agent,
+    AgentUpdatePayload,
     Credential,
     CredentialSshStatusResponse,
+    CredentialUpdatePayload,
     RevealCredentialResponse,
     TargetServer,
+    TargetServerUpdatePayload,
     User,
     UserRole,
     UserUpdatePayload,
@@ -112,6 +116,7 @@ function auditActorLabel(log: { actor_type: string; actor_id: string }, users: U
 export default function AdminPage(): JSX.Element {
     const router = useRouter();
     const session = useMemo(() => getSession(), []);
+    const { addToast } = useToast();
 
     const [activeTab, setActiveTab] = useState<string>("servers");
     const [agents, setAgents] = useState<Agent[]>([]);
@@ -120,8 +125,6 @@ export default function AdminPage(): JSX.Element {
     const [users, setUsers] = useState<User[]>([]);
     const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
-    const [message, setMessage] = useState("");
-    const [messageType, setMessageType] = useState<"" | "error" | "success">("");
     const [revealData, setRevealData] = useState<RevealCredentialResponse | null>(null);
     const [revealTimestamp, setRevealTimestamp] = useState<string | null>(null);
     const [dialog, setDialog] = useState<DialogState | null>(null);
@@ -137,10 +140,9 @@ export default function AdminPage(): JSX.Element {
             const data = await apiRequest<any[]>("/audit/logs", { token: session.token });
             setAuditLogs(data);
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to load logs");
-            setMessageType("error");
+            addToast(error instanceof Error ? error.message : "Failed to load logs", "error");
         }
-    }, [session]);
+    }, [addToast, session]);
 
     const loadServers = useCallback(async (): Promise<void> => {
         if (!session) return;
@@ -154,10 +156,9 @@ export default function AdminPage(): JSX.Element {
             setServers(serverList);
             setCredentials(credentialList);
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to load servers");
-            setMessageType("error");
+            addToast(error instanceof Error ? error.message : "Failed to load servers", "error");
         }
-    }, [session]);
+    }, [addToast, session]);
 
     const loadUsers = useCallback(async (): Promise<void> => {
         if (!session) return;
@@ -165,10 +166,9 @@ export default function AdminPage(): JSX.Element {
             const data = await apiRequest<User[]>("/admin/users?include_inactive=true", { token: session.token });
             setUsers(data);
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to load users");
-            setMessageType("error");
+            addToast(error instanceof Error ? error.message : "Failed to load users", "error");
         }
-    }, [session]);
+    }, [addToast, session]);
 
     useEffect(() => {
         if (!session) { router.replace("/login"); return; }
@@ -288,12 +288,10 @@ export default function AdminPage(): JSX.Element {
                     const data = await apiRequest<RevealCredentialResponse>(`/admin/credentials/${credential.id}/reveal`, { token: session.token });
                     setRevealData(data);
                     setRevealTimestamp(new Date().toISOString());
-                    setMessage("Password revealed and audited.");
-                    setMessageType("success");
+                    addToast("Password revealed and audited.", "success");
                     return true;
                 } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to reveal");
-                    setMessageType("error");
+                    addToast(error instanceof Error ? error.message : "Failed to reveal", "error");
                     return false;
                 }
             }
@@ -304,19 +302,16 @@ export default function AdminPage(): JSX.Element {
         if (!session) return;
         const server = servers.find(s => s.id === credential.server_id);
         setCheckingSshId(credential.id);
-        setMessage(`Testing SSH status for ${credential.managed_account} on ${server?.name ?? credential.server_id}...`);
-        setMessageType("");
+        addToast(`Testing SSH status for ${credential.managed_account} on ${server?.name ?? credential.server_id}...`, "info");
         try {
             const data = await apiRequest<CredentialSshStatusResponse>(
                 `/access-requests/credentials/${credential.id}/ssh-status`,
                 { method: "POST", token: session.token },
             );
             setSshStatuses((current) => ({ ...current, [credential.id]: data }));
-            setMessage(data.message);
-            setMessageType(data.ok ? "success" : "error");
+            addToast(data.message, data.ok ? "success" : "error");
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to test SSH status");
-            setMessageType("error");
+            addToast(error instanceof Error ? error.message : "Failed to test SSH status", "error");
         } finally {
             setCheckingSshId(null);
         }
@@ -358,19 +353,16 @@ export default function AdminPage(): JSX.Element {
                     }
 
                     if (requests.length === 0) {
-                        setMessage("No changes to save");
-                        setMessageType("success");
+                        addToast("No changes to save", "info");
                         return true;
                     }
 
                     await Promise.all(requests);
-                    setMessage("User updated");
-                    setMessageType("success");
+                    addToast("User updated", "success");
                     await loadUsers();
                     return true;
                 } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to update user");
-                    setMessageType("error");
+                    addToast(error instanceof Error ? error.message : "Failed to update user", "error");
                     return false;
                 }
             }
@@ -387,13 +379,11 @@ export default function AdminPage(): JSX.Element {
             onConfirm: async () => {
                 try {
                     await apiRequest(`/admin/users/${user.id}`, { method: "DELETE", token: session.token });
-                    setMessage("User deleted");
-                    setMessageType("success");
+                    addToast("User deleted", "success");
                     await loadUsers();
                     return true;
                 } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to delete user");
-                    setMessageType("error");
+                    addToast(error instanceof Error ? error.message : "Failed to delete user", "error");
                     return false;
                 }
             }
@@ -410,13 +400,11 @@ export default function AdminPage(): JSX.Element {
                 token: session.token,
                 body: JSON.stringify(Object.fromEntries(fd))
             });
-            setMessage("User created");
-            setMessageType("success");
+            addToast("User created", "success");
             e.currentTarget.reset();
             await loadUsers();
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Error");
-            setMessageType("error");
+            addToast(error instanceof Error ? error.message : "Error", "error");
         }
     }
 
@@ -438,13 +426,11 @@ export default function AdminPage(): JSX.Element {
                         token: currentSession.token,
                         body: JSON.stringify(values)
                     });
-                    setMessage(`Agent created. API Token: ${data.api_token}`);
-                    setMessageType("success");
+                    addToast(`Agent created. API Token: ${data.api_token}`, "success");
                     await loadServers();
                     return true;
                 } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to create agent");
-                    setMessageType("error");
+                    addToast(error instanceof Error ? error.message : "Failed to create agent", "error");
                     return false;
                 }
             }
@@ -475,13 +461,11 @@ export default function AdminPage(): JSX.Element {
                         token: session.token,
                         body: JSON.stringify({ ...values, port: parseInt(values.port) })
                     });
-                    setMessage("Server created");
-                    setMessageType("success");
+                    addToast("Server created", "success");
                     await loadServers();
                     return true;
                 } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to create server");
-                    setMessageType("error");
+                    addToast(error instanceof Error ? error.message : "Failed to create server", "error");
                     return false;
                 }
             }
@@ -508,13 +492,191 @@ export default function AdminPage(): JSX.Element {
                         token: session.token,
                         body: JSON.stringify(values)
                     });
-                    setMessage("Credential created");
-                    setMessageType("success");
+                    addToast("Credential created", "success");
                     await loadServers();
                     return true;
                 } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to create credential");
-                    setMessageType("error");
+                    addToast(error instanceof Error ? error.message : "Failed to create credential", "error");
+                    return false;
+                }
+            }
+        });
+    };
+
+    const openEditAgentDialog = (agent: Agent): void => {
+        if (!session) return;
+        setDialog({
+            title: "Edit Agent",
+            description: `Updating agent ${agent.name}.`,
+            confirmLabel: "Save Changes",
+            fields: [
+                { name: "name", label: "Agent Name", type: "text", required: true, defaultValue: agent.name },
+                { name: "site", label: "Site", type: "text", required: true, defaultValue: agent.site },
+                { name: "active", label: "Status", type: "select", required: true, defaultValue: agent.active ? "active" : "inactive", options: [{ label: "Active", value: "active" }, { label: "Inactive", value: "inactive" }] }
+            ],
+            onConfirm: async (values) => {
+                const payload: AgentUpdatePayload = {
+                    name: values.name,
+                    site: values.site,
+                    active: values.active === "active"
+                };
+                try {
+                    await apiRequest(`/admin/agents/${agent.id}`, {
+                        method: "PATCH",
+                        token: session.token,
+                        body: JSON.stringify(payload)
+                    });
+                    addToast("Agent updated", "success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    addToast(error instanceof Error ? error.message : "Failed to update agent", "error");
+                    return false;
+                }
+            }
+        });
+    };
+
+    const openDeleteAgentDialog = (agent: Agent): void => {
+        if (!session) return;
+        const assignedServers = servers.filter(s => s.agent_id === agent.id).length;
+        setDialog({
+            title: "Delete Agent",
+            description: `Delete ${agent.name}? This also removes ${assignedServers} assigned server${assignedServers === 1 ? "" : "s"} and their credentials.`,
+            confirmLabel: "Delete Agent",
+            tone: "danger",
+            onConfirm: async () => {
+                try {
+                    await apiRequest(`/admin/agents/${agent.id}`, { method: "DELETE", token: session.token });
+                    addToast("Agent deleted", "success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    addToast(error instanceof Error ? error.message : "Failed to delete agent", "error");
+                    return false;
+                }
+            }
+        });
+    };
+
+    const openEditServerDialog = (server: TargetServer): void => {
+        if (!session) return;
+        const agentOptions = agents.filter(a => a.active || a.id === server.agent_id).map(a => ({ label: `${a.name} (${a.site})`, value: a.id }));
+        setDialog({
+            title: "Edit Server",
+            description: `Updating server ${server.name}.`,
+            confirmLabel: "Save Changes",
+            fields: [
+                { name: "name", label: "Server Name", type: "text", required: true, defaultValue: server.name },
+                { name: "site", label: "Site", type: "text", required: true, defaultValue: server.site },
+                { name: "agent_id", label: "Agent", type: "select", required: true, defaultValue: server.agent_id, options: agentOptions },
+                { name: "os_type", label: "OS Type", type: "select", required: true, defaultValue: server.os_type, options: [{ label: "UNIX", value: "unix" }, { label: "Windows", value: "windows" }] },
+                { name: "host", label: "Host", type: "text", required: true, defaultValue: server.host },
+                { name: "port", label: "Port", type: "number", defaultValue: String(server.port) },
+                { name: "connection_profile", label: "Connection Profile", type: "select", defaultValue: server.connection_profile, options: [{ label: "Default", value: "default" }, { label: "SSH Key", value: "ssh_key" }, { label: "Password", value: "password" }] }
+            ],
+            onConfirm: async (values) => {
+                const payload: TargetServerUpdatePayload = {
+                    name: values.name,
+                    site: values.site,
+                    agent_id: values.agent_id,
+                    os_type: values.os_type as TargetServer["os_type"],
+                    host: values.host,
+                    port: parseInt(values.port, 10),
+                    connection_profile: values.connection_profile
+                };
+                try {
+                    await apiRequest(`/admin/servers/${server.id}`, {
+                        method: "PATCH",
+                        token: session.token,
+                        body: JSON.stringify(payload)
+                    });
+                    addToast("Server updated", "success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    addToast(error instanceof Error ? error.message : "Failed to update server", "error");
+                    return false;
+                }
+            }
+        });
+    };
+
+    const openDeleteServerDialog = (server: TargetServer): void => {
+        if (!session) return;
+        const credentialCount = credentials.filter(c => c.server_id === server.id).length;
+        setDialog({
+            title: "Delete Server",
+            description: `Delete ${server.name}? This also removes ${credentialCount} credential${credentialCount === 1 ? "" : "s"} for this server.`,
+            confirmLabel: "Delete Server",
+            tone: "danger",
+            onConfirm: async () => {
+                try {
+                    await apiRequest(`/admin/servers/${server.id}`, { method: "DELETE", token: session.token });
+                    addToast("Server deleted", "success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    addToast(error instanceof Error ? error.message : "Failed to delete server", "error");
+                    return false;
+                }
+            }
+        });
+    };
+
+    const openEditCredentialDialog = (credential: Credential): void => {
+        if (!session) return;
+        const serverOptions = servers.map(s => ({ label: `${s.name} (${s.site})`, value: s.id }));
+        setDialog({
+            title: "Edit Credential",
+            description: `Updating credential for ${credential.managed_account}. Leave password blank to keep the current password.`,
+            confirmLabel: "Save Changes",
+            fields: [
+                { name: "server_id", label: "Server", type: "select", required: true, defaultValue: credential.server_id, options: serverOptions },
+                { name: "managed_account", label: "Managed Account", type: "text", required: true, defaultValue: credential.managed_account },
+                { name: "password", label: "New Password", type: "password", helper: "Optional. Enter a value only when rotating or correcting this password." }
+            ],
+            onConfirm: async (values) => {
+                const payload: CredentialUpdatePayload = {
+                    server_id: values.server_id,
+                    managed_account: values.managed_account
+                };
+                if (values.password) {
+                    payload.password = values.password;
+                }
+                try {
+                    await apiRequest(`/admin/credentials/${credential.id}`, {
+                        method: "PATCH",
+                        token: session.token,
+                        body: JSON.stringify(payload)
+                    });
+                    addToast("Credential updated", "success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    addToast(error instanceof Error ? error.message : "Failed to update credential", "error");
+                    return false;
+                }
+            }
+        });
+    };
+
+    const openDeleteCredentialDialog = (credential: Credential): void => {
+        if (!session) return;
+        const server = servers.find(s => s.id === credential.server_id);
+        setDialog({
+            title: "Delete Credential",
+            description: `Delete ${credential.managed_account} on ${server?.name ?? credential.server_id}? This action cannot be undone.`,
+            confirmLabel: "Delete Credential",
+            tone: "danger",
+            onConfirm: async () => {
+                try {
+                    await apiRequest(`/admin/credentials/${credential.id}`, { method: "DELETE", token: session.token });
+                    addToast("Credential deleted", "success");
+                    await loadServers();
+                    return true;
+                } catch (error) {
+                    addToast(error instanceof Error ? error.message : "Failed to delete credential", "error");
                     return false;
                 }
             }
@@ -625,9 +787,14 @@ export default function AdminPage(): JSX.Element {
                                                         </TableCell>
                                                         <TableCell>{agents.find(a => a.id === s.agent_id)?.name ?? "Unknown"}</TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="ghost" size="icon">
-                                                                <IconEdit className="w-4 h-4" />
-                                                            </Button>
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button variant="ghost" size="icon" onClick={() => openEditServerDialog(s)} title="Edit server">
+                                                                    <IconEdit className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => openDeleteServerDialog(s)} title="Delete server">
+                                                                    <IconTrash className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))
@@ -684,9 +851,14 @@ export default function AdminPage(): JSX.Element {
                                                         </TableCell>
                                                         <TableCell>{a.last_seen_at ? formatDate(a.last_seen_at) : "Never"}</TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="ghost" size="icon">
-                                                                <IconEdit className="w-4 h-4" />
-                                                            </Button>
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button variant="ghost" size="icon" onClick={() => openEditAgentDialog(a)} title="Edit agent">
+                                                                    <IconEdit className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => openDeleteAgentDialog(a)} title="Delete agent">
+                                                                    <IconTrash className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 ))
@@ -771,6 +943,12 @@ export default function AdminPage(): JSX.Element {
                                                                     </Button>
                                                                     <Button variant="ghost" size="icon" onClick={handleReveal} title="Reveal password">
                                                                         <IconEye className="w-4 h-4" />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" onClick={() => openEditCredentialDialog(c)} title="Edit credential">
+                                                                        <IconEdit className="w-4 h-4" />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" onClick={() => openDeleteCredentialDialog(c)} title="Delete credential">
+                                                                        <IconTrash className="w-4 h-4" />
                                                                     </Button>
                                                                 </div>
                                                             </TableCell>
@@ -1014,7 +1192,6 @@ export default function AdminPage(): JSX.Element {
                             </CardContent>
                         )}
                     </div>
-                    {message && <div className={`toast ${messageType}`} style={{ marginTop: "1rem" }}>{message}</div>}
                 </div>
             </main>
             <ConfirmDialog

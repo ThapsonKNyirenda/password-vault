@@ -44,6 +44,12 @@ class AgentCreateRequest(BaseModel):
     site: str
 
 
+class AgentUpdateRequest(BaseModel):
+    name: str | None = None
+    site: str | None = None
+    active: bool | None = None
+
+
 class AgentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -70,6 +76,16 @@ class TargetServerCreate(BaseModel):
     connection_profile: str = "default"
 
 
+class TargetServerUpdate(BaseModel):
+    name: str | None = None
+    site: str | None = None
+    agent_id: str | None = None
+    os_type: ServerOS | None = None
+    host: str | None = None
+    port: int | None = None
+    connection_profile: str | None = None
+
+
 class TargetServerOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -88,6 +104,12 @@ class CredentialCreate(BaseModel):
     server_id: str
     managed_account: str
     initial_password: str = Field(min_length=5)
+
+
+class CredentialUpdate(BaseModel):
+    server_id: str | None = None
+    managed_account: str | None = None
+    password: str | None = Field(default=None, min_length=5)
 
 
 class CredentialPasswordUpdateRequest(BaseModel):

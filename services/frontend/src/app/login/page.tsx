@@ -6,16 +6,16 @@ import { useRouter } from "next/navigation";
 
 import { IconEye, IconLock } from "../../components/Icons";
 import { ThemeToggle } from "../../components/ThemeToggle";
+import { useToast } from "../../components/ToastProvider";
 import { apiRequest } from "../../lib/api";
 import { getSession, setSession } from "../../lib/auth";
 import type { AuthResponse } from "../../lib/types";
 
 export default function LoginPage(): JSX.Element {
     const router = useRouter();
+    const { addToast } = useToast();
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [message, setMessage] = useState("");
-    const [messageType, setMessageType] = useState<"" | "error">("");
     const [loading, setLoading] = useState(false);
     const [showValidation, setShowValidation] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -31,15 +31,13 @@ export default function LoginPage(): JSX.Element {
         event.stopPropagation();
 
         if (!username.trim() || !password.trim()) {
-            setMessage("Please enter both username and password.");
-            setMessageType("error");
+            addToast("Please enter both username and password.", "error");
             setShowValidation(true);
             return;
         }
 
         setLoading(true);
-        setMessage("Authenticating...");
-        setMessageType("");
+        addToast("Authenticating...", "info");
 
         try {
             const payload = await apiRequest<AuthResponse>("/auth/login", {
@@ -48,8 +46,7 @@ export default function LoginPage(): JSX.Element {
             });
 
             setSession({ token: payload.access_token, role: payload.role, username: payload.username });
-            setMessage("Login successful! Redirecting...");
-            setMessageType("");
+            addToast("Login successful! Redirecting...", "success");
 
             // Small delay to show success message
             setTimeout(() => {
@@ -59,8 +56,7 @@ export default function LoginPage(): JSX.Element {
         } catch (error) {
             console.error("Login failed:", error);
             const errorMessage = error instanceof Error ? error.message : "Authentication failed";
-            setMessage(errorMessage);
-            setMessageType("error");
+            addToast(errorMessage, "error");
         } finally {
             setLoading(false);
         }
@@ -138,12 +134,6 @@ export default function LoginPage(): JSX.Element {
                             {loading ? "Signing in..." : "Sign In"}
                         </button>
                     </form>
-
-                    {message ? (
-                        <div className={`toast ${messageType}`} role={messageType === "error" ? "alert" : "status"}>
-                            {message}
-                        </div>
-                    ) : null}
                 </div>
             </div>
         </div>

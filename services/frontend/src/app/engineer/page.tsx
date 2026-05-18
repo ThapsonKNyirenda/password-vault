@@ -23,6 +23,7 @@ import {
 } from "../../components/Icons";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
+import { useToast } from "../../components/ToastProvider";
 import { apiRequest } from "../../lib/api";
 import { getSession } from "../../lib/auth";
 import { formatDate } from "../../lib/format";
@@ -52,11 +53,10 @@ const TABS = [
 export default function EngineerPage(): JSX.Element {
     const router = useRouter();
     const session = useMemo(() => getSession(), []);
+    const { addToast } = useToast();
 
     const [activeTab, setActiveTab] = useState("catalog");
     const [catalog, setCatalog] = useState<CredentialCatalogItem[]>([]);
-    const [message, setMessage] = useState("");
-    const [messageType, setMessageType] = useState<"" | "error" | "success">("");
     const [revealData, setRevealData] = useState<RevealCredentialResponse | null>(null);
     const [revealExpiresAt, setRevealExpiresAt] = useState<Date | null>(null);
     const [countdown, setCountdown] = useState("");
@@ -70,10 +70,9 @@ export default function EngineerPage(): JSX.Element {
         try {
             setCatalog(await apiRequest<CredentialCatalogItem[]>("/access-requests/catalog", { token: session.token }));
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to load catalog");
-            setMessageType("error");
+            addToast(error instanceof Error ? error.message : "Failed to load catalog", "error");
         }
-    }, [session]);
+    }, [addToast, session]);
 
     useEffect(() => {
         if (!session) { router.replace("/login"); return; }
@@ -94,7 +93,7 @@ export default function EngineerPage(): JSX.Element {
             const remaining = revealExpiresAt.getTime() - Date.now();
             if (remaining <= 0) {
                 setRevealData(null); setRevealExpiresAt(null); setCountdown("");
-                setMessage("Reveal window expired."); setMessageType("");
+                addToast("Reveal window expired.", "info");
                 return;
             }
             setCountdown(formatCountdown(remaining));
@@ -102,7 +101,7 @@ export default function EngineerPage(): JSX.Element {
         tick();
         const id = window.setInterval(tick, 1000);
         return () => window.clearInterval(id);
-    }, [revealExpiresAt]);
+    }, [addToast, revealExpiresAt]);
 
     async function handleDialogConfirm(values: Record<string, string>): Promise<void> {
         if (!dialog) return;
@@ -128,11 +127,11 @@ export default function EngineerPage(): JSX.Element {
                     });
                     setRevealData(data);
                     setRevealExpiresAt(data.expires_at ? new Date(data.expires_at) : new Date(Date.now() + 5 * 60 * 1000));
-                    setMessage("Credential revealed. Auto-hide in 5 minutes."); setMessageType("success");
+                    addToast("Credential revealed. Auto-hide in 5 minutes.", "success");
                     setActiveTab("reveal");
                     return true;
                 } catch (error) {
-                    setMessage(error instanceof Error ? error.message : "Failed to reveal"); setMessageType("error");
+                    addToast(error instanceof Error ? error.message : "Failed to reveal", "error");
                     return false;
                 }
             },
@@ -142,19 +141,16 @@ export default function EngineerPage(): JSX.Element {
     async function testSshStatus(item: CredentialCatalogItem): Promise<void> {
         if (!session) return;
         setCheckingSshId(item.credential_id);
-        setMessage(`Testing SSH status for ${item.managed_account} on ${item.server_name}...`);
-        setMessageType("");
+        addToast(`Testing SSH status for ${item.managed_account} on ${item.server_name}...`, "info");
         try {
             const data = await apiRequest<CredentialSshStatusResponse>(
                 `/access-requests/credentials/${item.credential_id}/ssh-status`,
                 { method: "POST", token: session.token },
             );
             setSshStatuses((current) => ({ ...current, [item.credential_id]: data }));
-            setMessage(data.message);
-            setMessageType(data.ok ? "success" : "error");
+            addToast(data.message, data.ok ? "success" : "error");
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Failed to test SSH status");
-            setMessageType("error");
+            addToast(error instanceof Error ? error.message : "Failed to test SSH status", "error");
         } finally {
             setCheckingSshId(null);
         }
@@ -209,12 +205,6 @@ export default function EngineerPage(): JSX.Element {
                             icon={<IconServer className="icon-lg" />}
                         />
                     </div>
-
-                    {message ? (
-                        <div className={`p-4 rounded-md mb-4 text-sm ${messageType === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-                            {message}
-                        </div>
-                    ) : null}
 
                     <Card>
                         <CardHeader>

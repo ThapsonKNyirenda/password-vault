@@ -1354,6 +1354,81 @@
     border: 1px solid var(--danger);
   }
 
+  .toast-stack {
+    position: fixed;
+    right: 1rem;
+    top: 1rem;
+    z-index: 100;
+    display: flex;
+    width: min(28rem, calc(100vw - 2rem));
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .toast-notification {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-lg);
+    padding: 0.875rem 1rem;
+  }
+
+  .toast-success {
+    border-color: var(--accent-glow);
+    background: var(--accent-dim);
+    color: var(--accent2);
+  }
+
+  .toast-error {
+    border-color: var(--danger);
+    background: var(--danger-dim);
+    color: var(--danger);
+  }
+
+  .toast-warning {
+    border-color: hsl(38 92% 50% / 0.5);
+    background: hsl(38 92% 50% / 0.12);
+    color: hsl(38 92% 40%);
+  }
+
+  .toast-info {
+    border-color: hsl(var(--primary) / 0.35);
+    background: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+  }
+
+  .toast-message {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .toast-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: currentColor;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+
+  .toast-close:hover {
+    opacity: 1;
+    background: rgb(255 255 255 / 0.2);
+  }
+
   .info-card {
     background: var(--surface2);
     border: 1px solid var(--border-light);

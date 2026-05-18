@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { ToastProvider } from "../components/ToastProvider";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -40,7 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
                 <script dangerouslySetInnerHTML={{ __html: themeScript }} />
             </head>
             <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} bg-background text-foreground antialiased`}>
-                {children}
+                <ToastProvider>{children}</ToastProvider>
             </body>
         </html>
     );

@@ -167,3 +167,71 @@ def test_unauthorized_calls_are_rejected(client) -> None:
         json={"password": "Anything"},
     )
     assert missing_credential_response.status_code == 401
+
+
+def test_admin_can_update_and_delete_agents_servers_and_credentials(client) -> None:
+    admin_token = login(client, "admin", "ChangeMeStrong!")
+    _, server_id, credential_id = create_agent_server_credential(client, admin_token)
+
+    agents_response = client.get(
+        "/api/v1/admin/agents",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert agents_response.status_code == 200
+    agent_id = next(item for item in agents_response.json() if item["name"] == "site-a-agent-2")["id"]
+
+    agent_update = client.patch(
+        f"/api/v1/admin/agents/{agent_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"name": "site-a-agent-renamed", "site": "site-b", "active": False},
+    )
+    assert agent_update.status_code == 200
+    assert agent_update.json()["name"] == "site-a-agent-renamed"
+    assert agent_update.json()["site"] == "site-b"
+    assert agent_update.json()["active"] is False
+
+    reactivate_agent = client.patch(
+        f"/api/v1/admin/agents/{agent_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"active": True},
+    )
+    assert reactivate_agent.status_code == 200
+
+    server_update = client.patch(
+        f"/api/v1/admin/servers/{server_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"name": "server-renamed", "site": "site-b", "host": "10.0.0.11", "port": 2222},
+    )
+    assert server_update.status_code == 200
+    server_payload = server_update.json()
+    assert server_payload["name"] == "server-renamed"
+    assert server_payload["host"] == "10.0.0.11"
+    assert server_payload["port"] == 2222
+
+    credential_update = client.patch(
+        f"/api/v1/admin/credentials/{credential_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"managed_account": "svc_renamed", "password": "UpdatedPassword!3"},
+    )
+    assert credential_update.status_code == 200
+    credential_payload = credential_update.json()
+    assert credential_payload["managed_account"] == "svc_renamed"
+    assert credential_payload["version"] == 2
+
+    delete_credential = client.delete(
+        f"/api/v1/admin/credentials/{credential_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert delete_credential.status_code == 204
+
+    delete_server = client.delete(
+        f"/api/v1/admin/servers/{server_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert delete_server.status_code == 204
+
+    delete_agent = client.delete(
+        f"/api/v1/admin/agents/{agent_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert delete_agent.status_code == 204
