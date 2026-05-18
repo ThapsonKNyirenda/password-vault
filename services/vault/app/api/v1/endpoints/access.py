@@ -1,7 +1,8 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import inspect, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles
@@ -23,18 +24,26 @@ router = APIRouter(prefix="/access-requests", tags=["access"])
 settings = get_settings()
 
 
-def get_direct_reveal_minutes(db: Session) -> int:
-    setting = db.get(SystemSetting, "direct_reveal_minutes")
-    if setting and setting.value.strip().isdigit():
-        minutes = int(setting.value)
-    else:
-        minutes = settings.direct_reveal_minutes
-
+def clamp_direct_reveal_minutes(minutes: int) -> int:
     if minutes < 1:
         return 1
     if minutes > 120:
         return 120
     return minutes
+
+
+def get_direct_reveal_minutes(db: Session) -> int:
+    minutes = settings.direct_reveal_minutes
+
+    try:
+        if inspect(db.get_bind()).has_table(SystemSetting.__tablename__):
+            setting = db.get(SystemSetting, "direct_reveal_minutes")
+            if setting and setting.value.strip().isdigit():
+                minutes = int(setting.value)
+    except SQLAlchemyError:
+        db.rollback()
+
+    return clamp_direct_reveal_minutes(minutes)
 
 
 @router.get("/catalog", response_model=list[CredentialCatalogItem])
@@ -122,7 +131,6 @@ def get_reveal_policy(
     _: User = Depends(require_roles(UserRole.ADMIN, UserRole.ENGINEER)),
 ) -> RevealPolicy:
     return RevealPolicy(minutes=get_direct_reveal_minutes(db))
-
 
 
 

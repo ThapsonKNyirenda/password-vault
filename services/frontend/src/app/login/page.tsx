@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { IconActivity, IconLock, IconShield, IconVaultPrism } from "../../components/Icons";
+import { IconLock, IconVaultPrism } from "../../components/Icons";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { apiRequest } from "../../lib/api";
 import { getSession, setSession } from "../../lib/auth";
@@ -131,29 +131,6 @@ export default function LoginPage(): JSX.Element {
                             {message}
                         </div>
                     ) : null}
-                </div>
-            </div>
-
-            <div className="login-right">
-                <div className="info-card">
-                    <div className="info-card-title">
-                        <IconActivity className="icon" style={{ color: "var(--accent-vault)" }} />
-                        Live Control Plane
-                    </div>
-                    <p>Monitor server assignments, agent syncs, and password reveal workflows from a single audited surface.</p>
-                </div>
-
-                <div className="info-card">
-                    <div className="info-card-title">
-                        <IconShield className="icon" style={{ color: "var(--accent-vault)" }} />
-                        Security Baseline
-                    </div>
-                    <div className="security-list">
-                        <div className="security-item">AES-256-GCM envelope encryption for all vault passwords.</div>
-                        <div className="security-item">RBAC enforced with short-lived JWT tokens.</div>
-                        <div className="security-item">Agent authentication via signed bearer tokens.</div>
-                        <div className="security-item">Full audit trail on approvals, reveals, and agent syncs.</div>
-                    </div>
                 </div>
             </div>
         </div>

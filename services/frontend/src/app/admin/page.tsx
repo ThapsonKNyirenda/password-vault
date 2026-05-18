@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Sidebar } from "../../components/Sidebar";
+import { HeaderActions } from "../../components/HeaderActions";
 import { ConfirmDialog, type ConfirmDialogField } from "../../components/ConfirmDialog";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -31,7 +32,6 @@ import {
     IconRefresh,
     IconTrash,
     IconUser,
-    IconShield,
     IconKey,
     IconInbox,
     IconServer,
@@ -471,12 +471,14 @@ export default function AdminPage(): JSX.Element {
 
     return (
         <div className="layout">
-            <Sidebar username={session.username} role={session.role} activeTab={activeTab} tabs={TABS} onTabChange={setActiveTab} />
+            <Sidebar activeTab={activeTab} tabs={TABS} onTabChange={setActiveTab} />
             <main className="main-content">
                 <div className="page-shell">
                     <header className="page-header">
-                        <h1 className="page-title">Administrative Control</h1>
-                        <p className="page-subtitle">Manage system access, servers, and users.</p>
+                        <div>
+                            <h1 className="page-title">Administrative Control</h1>
+                        </div>
+                        <HeaderActions />
                     </header>
 
                     <div className="stats-grid">
@@ -700,6 +702,31 @@ export default function AdminPage(): JSX.Element {
                                         </TableBody>
                                     </Table>
                                 </div>
+                                {revealData && (
+                                    <div className="mt-4 space-y-3 border border-destructive/30 bg-destructive/5 p-4">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <div className="space-y-1">
+                                                <div className="text-sm font-medium">Revealed credential</div>
+                                                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                    <Badge variant="outline">{revealData.server_name}</Badge>
+                                                    <Badge variant="secondary">{revealData.managed_account}</Badge>
+                                                    {revealTimestamp && <span>Revealed {formatDate(revealTimestamp)}</span>}
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setRevealData(null);
+                                                    setRevealTimestamp(null);
+                                                }}
+                                            >
+                                                Hide
+                                            </Button>
+                                        </div>
+                                        <pre className="overflow-x-auto bg-background p-4 text-sm text-foreground">{revealPayload}</pre>
+                                    </div>
+                                )}
                             </div>
                         )}
 

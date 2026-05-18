@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from sqlalchemy import text
+
+from app.db.session import engine
+
 
 def login(client, username: str, password: str) -> str:
     response = client.post(
@@ -80,6 +84,27 @@ def test_direct_reveal_returns_current_password(client) -> None:
     reveal_payload = reveal_response.json()
     assert reveal_payload["credential_id"] == credential_id
     assert reveal_payload["password"] == "InitialPassword!1"
+
+
+def test_direct_reveal_falls_back_when_system_settings_table_is_missing(client) -> None:
+    admin_token = login(client, "admin", "ChangeMeStrong!")
+    engineer_token = login(client, "engineer", "EngineerChangeMe!123")
+    _, _, credential_id = create_agent_server_credential(client, admin_token)
+
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE system_settings"))
+
+    reveal_response = client.post(
+        "/api/v1/access-requests/direct-reveal",
+        headers={"Authorization": f"Bearer {engineer_token}"},
+        json={"credential_id": credential_id},
+    )
+
+    assert reveal_response.status_code == 200
+    reveal_payload = reveal_response.json()
+    assert reveal_payload["credential_id"] == credential_id
+    assert reveal_payload["password"] == "InitialPassword!1"
+    assert reveal_payload["expires_at"] is not None
 
 
 def test_agent_sync_updates_password_and_increments_version_only_on_change(client) -> None:

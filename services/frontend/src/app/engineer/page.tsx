@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Sidebar } from "../../components/Sidebar";
+import { HeaderActions } from "../../components/HeaderActions";
 import { ConfirmDialog, type ConfirmDialogField } from "../../components/ConfirmDialog";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -17,8 +18,8 @@ import {
 } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
 import {
-    IconEye, IconKey, IconRefresh, IconShield, IconClock,
-    IconCheckCircle, IconActivity, IconServer, IconLock
+    IconEye, IconKey, IconRefresh, IconClock,
+    IconCheckCircle, IconServer, IconLock
 } from "../../components/Icons";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -145,8 +146,6 @@ export default function EngineerPage(): JSX.Element {
     return (
         <div className="layout">
             <Sidebar
-                username={session.username}
-                role={session.role}
                 activeTab={activeTab}
                 tabs={TABS}
                 onTabChange={setActiveTab}
@@ -154,7 +153,13 @@ export default function EngineerPage(): JSX.Element {
 
             <main className="main-content">
                 <div className="page-shell">
-                    {/* Stats */}
+                    <header className="page-header">
+                        <div>
+                            <h1 className="page-title">Credential Access</h1>
+                        </div>
+                        <HeaderActions />
+                    </header>
+
                     <div className="stats-grid">
                         <StatCard
                             label="Total Credentials"

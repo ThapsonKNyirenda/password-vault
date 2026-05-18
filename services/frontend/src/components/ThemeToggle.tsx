@@ -5,7 +5,11 @@ import { useEffect, useState } from "react";
 import { applyTheme, getPreferredTheme, getStoredTheme, setStoredTheme, type ThemeMode } from "../lib/theme";
 import { IconMoon, IconSun } from "./Icons";
 
-export function ThemeToggle(): JSX.Element {
+interface ThemeToggleProps {
+    showLabel?: boolean;
+}
+
+export function ThemeToggle({ showLabel = true }: ThemeToggleProps): JSX.Element {
     const [theme, setTheme] = useState<ThemeMode>("dark");
 
     useEffect(() => {
@@ -33,7 +37,7 @@ export function ThemeToggle(): JSX.Element {
                     {theme === "dark" ? <IconMoon className="icon-sm" /> : <IconSun className="icon-sm" />}
                 </span>
             </span>
-            <span className="theme-toggle-label">{theme === "dark" ? "Dark" : "Light"}</span>
+            {showLabel ? <span className="theme-toggle-label">{theme === "dark" ? "Dark" : "Light"}</span> : null}
         </button>
     );
 }

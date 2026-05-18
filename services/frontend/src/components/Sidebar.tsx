@@ -1,22 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 
-import { clearSession } from "../lib/auth";
-import { IconLogout, IconMenu, IconVaultPrism, IconX } from "./Icons";
-import { ThemeToggle } from "./ThemeToggle";
+import { IconMenu, IconVaultPrism, IconX } from "./Icons";
 
 interface SidebarProps {
-    username: string;
-    role: string;
     activeTab: string;
     tabs: Array<{ id: string; label: string; icon: React.ReactNode }>;
     onTabChange: (id: string) => void;
 }
 
-export function Sidebar({ username, role, activeTab, tabs, onTabChange }: SidebarProps): JSX.Element {
-    const router = useRouter();
+export function Sidebar({ activeTab, tabs, onTabChange }: SidebarProps): JSX.Element {
     const [mobileOpen, setMobileOpen] = useState(false);
 
     // Close mobile sidebar on route change / tab click
@@ -24,17 +18,10 @@ export function Sidebar({ username, role, activeTab, tabs, onTabChange }: Sideba
         setMobileOpen(false);
     }, [activeTab]);
 
-    function handleLogout(): void {
-        clearSession();
-        router.replace("/login");
-    }
-
     function handleTabClick(id: string): void {
         onTabChange(id);
         setMobileOpen(false);
     }
-
-    const initials = username.slice(0, 2).toUpperCase();
 
     return (
         <>
@@ -87,20 +74,6 @@ export function Sidebar({ username, role, activeTab, tabs, onTabChange }: Sideba
                     ))}
                 </nav>
 
-                <div className="sidebar-footer">
-                    <ThemeToggle />
-                    <div className="sidebar-user" title={`${username} (${role})`}>
-                        <div className="sidebar-avatar">{initials}</div>
-                        <div className="sidebar-user-info">
-                            <span>{username}</span>
-                            <small>{role}</small>
-                        </div>
-                    </div>
-                    <button type="button" className="logout-btn" onClick={handleLogout}>
-                        <IconLogout className="icon-sm" />
-                        <span>Sign out</span>
-                    </button>
-                </div>
             </aside>
         </>
     );
