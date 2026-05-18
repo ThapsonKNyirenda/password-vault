@@ -28,6 +28,20 @@ services:
       - "8000:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
+  rotation-worker:
+    build:
+      context: ./services/vault
+    image: localhost/vault-system_rotation-worker:latest
+    container_name: vault-rotation-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:Postgres@postgres:5432/vault
+    depends_on:
+      - postgres
+    command: python -m app.workers.rotation_worker
+
   frontend:
     build:
       context: ./services/frontend
@@ -46,6 +60,19 @@ services:
 
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://vault:8000/api/v1
+
+  agent:
+    build:
+      context: ./services/agent
+    image: localhost/vault-system_agent:latest
+    container_name: site-a-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - vault
+    volumes:
+      - ./keys:/keys:ro
 
 volumes:
   postgres_data:

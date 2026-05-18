@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .models import AccessStatus, ServerOS, SyncSource, UserRole
+from .models import ServerOS, SyncSource, UserRole
 
 
 class LoginRequest(BaseModel):
@@ -33,9 +33,21 @@ class UserOut(BaseModel):
     created_at: datetime
 
 
+class UserUpdate(BaseModel):
+    username: str | None = None
+    password: str | None = Field(default=None, min_length=12)
+    role: UserRole | None = None
+
+
 class AgentCreateRequest(BaseModel):
     name: str
     site: str
+
+
+class AgentUpdateRequest(BaseModel):
+    name: str | None = None
+    site: str | None = None
+    active: bool | None = None
 
 
 class AgentOut(BaseModel):
@@ -56,14 +68,22 @@ class AgentCreateResponse(BaseModel):
 
 class TargetServerCreate(BaseModel):
     name: str
-    site: str
+    site: str | None = None
     agent_id: str
     os_type: ServerOS
     host: str
     port: int
-    managed_account: str
-    connection_username: str
-    connection_profile: str = "default"
+    connection_profile: str = "password"
+
+
+class TargetServerUpdate(BaseModel):
+    name: str | None = None
+    site: str | None = None
+    agent_id: str | None = None
+    os_type: ServerOS | None = None
+    host: str | None = None
+    port: int | None = None
+    connection_profile: str | None = None
 
 
 class TargetServerOut(BaseModel):
@@ -76,8 +96,6 @@ class TargetServerOut(BaseModel):
     os_type: ServerOS
     host: str
     port: int
-    managed_account: str
-    connection_username: str
     connection_profile: str
     created_at: datetime
 
@@ -86,6 +104,12 @@ class CredentialCreate(BaseModel):
     server_id: str
     managed_account: str
     initial_password: str = Field(min_length=5)
+
+
+class CredentialUpdate(BaseModel):
+    server_id: str | None = None
+    managed_account: str | None = None
+    password: str | None = Field(default=None, min_length=5)
 
 
 class CredentialPasswordUpdateRequest(BaseModel):
@@ -103,29 +127,11 @@ class CredentialOut(BaseModel):
     last_sync_source: SyncSource
 
 
-class AccessRequestCreate(BaseModel):
+
+
+
+class DirectRevealRequest(BaseModel):
     credential_id: str
-    reason: str = Field(min_length=5, max_length=2000)
-
-
-class AccessDecisionRequest(BaseModel):
-    expires_minutes: int = Field(default=15, ge=5, le=120)
-    note: str | None = Field(default=None, max_length=400)
-
-
-class AccessRequestOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    requester_id: int
-    credential_id: str
-    status: AccessStatus
-    reason: str
-    expires_at: datetime | None
-    approved_by: int | None
-    approved_at: datetime | None
-    revealed_at: datetime | None
-    created_at: datetime
 
 
 class CredentialCatalogItem(BaseModel):
@@ -145,6 +151,22 @@ class RevealCredentialResponse(BaseModel):
     managed_account: str
     expires_at: datetime | None
     password: str
+
+
+class CredentialSshStatusResponse(BaseModel):
+    credential_id: str
+    server_name: str
+    host: str
+    port: int
+    managed_account: str
+    ok: bool
+    status: str
+    message: str
+    checked_at: datetime
+
+
+class RevealPolicy(BaseModel):
+    minutes: int = Field(default=5, ge=1, le=120)
 
 
 class AgentCredentialAssignment(BaseModel):

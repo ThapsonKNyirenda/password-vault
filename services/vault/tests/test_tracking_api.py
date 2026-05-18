@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from sqlalchemy import text
+
+from app.db.session import engine
+
 
 def login(client, username: str, password: str) -> str:
     response = client.post(
@@ -31,8 +35,6 @@ def create_agent_server_credential(client, admin_token: str) -> tuple[str, str, 
             "os_type": "unix",
             "host": "10.0.0.10",
             "port": 22,
-            "managed_account": "svc_app",
-            "connection_username": "opsadmin",
             "connection_profile": "default",
         },
     )
@@ -68,37 +70,41 @@ def test_create_credential_sets_admin_sync_metadata(client) -> None:
     assert credential["last_synced_at"]
 
 
-def test_approved_request_can_reveal_current_password_without_jobs(client) -> None:
+def test_direct_reveal_returns_current_password(client) -> None:
     admin_token = login(client, "admin", "ChangeMeStrong!")
     engineer_token = login(client, "engineer", "EngineerChangeMe!123")
     _, _, credential_id = create_agent_server_credential(client, admin_token)
 
-    request_response = client.post(
-        "/api/v1/access-requests/",
-        headers={"Authorization": f"Bearer {engineer_token}"},
-        json={"credential_id": credential_id, "reason": "Troubleshooting incident"},
-    )
-    assert request_response.status_code == 201
-    request_payload = request_response.json()
-    assert "rotation_job_id" not in request_payload
-
-    approve_response = client.post(
-        f"/api/v1/access-requests/{request_payload['id']}/approve",
-        headers={"Authorization": f"Bearer {admin_token}"},
-        json={"expires_minutes": 15},
-    )
-    assert approve_response.status_code == 200
-    assert "rotation_job_id" not in approve_response.json()
-
     reveal_response = client.post(
-        f"/api/v1/access-requests/{request_payload['id']}/reveal",
+        "/api/v1/access-requests/direct-reveal",
         headers={"Authorization": f"Bearer {engineer_token}"},
-        json={},
+        json={"credential_id": credential_id},
     )
     assert reveal_response.status_code == 200
     reveal_payload = reveal_response.json()
     assert reveal_payload["credential_id"] == credential_id
     assert reveal_payload["password"] == "InitialPassword!1"
+
+
+def test_direct_reveal_falls_back_when_system_settings_table_is_missing(client) -> None:
+    admin_token = login(client, "admin", "ChangeMeStrong!")
+    engineer_token = login(client, "engineer", "EngineerChangeMe!123")
+    _, _, credential_id = create_agent_server_credential(client, admin_token)
+
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE system_settings"))
+
+    reveal_response = client.post(
+        "/api/v1/access-requests/direct-reveal",
+        headers={"Authorization": f"Bearer {engineer_token}"},
+        json={"credential_id": credential_id},
+    )
+
+    assert reveal_response.status_code == 200
+    reveal_payload = reveal_response.json()
+    assert reveal_payload["credential_id"] == credential_id
+    assert reveal_payload["password"] == "InitialPassword!1"
+    assert reveal_payload["expires_at"] is not None
 
 
 def test_agent_sync_updates_password_and_increments_version_only_on_change(client) -> None:
@@ -161,3 +167,71 @@ def test_unauthorized_calls_are_rejected(client) -> None:
         json={"password": "Anything"},
     )
     assert missing_credential_response.status_code == 401
+
+
+def test_admin_can_update_and_delete_agents_servers_and_credentials(client) -> None:
+    admin_token = login(client, "admin", "ChangeMeStrong!")
+    _, server_id, credential_id = create_agent_server_credential(client, admin_token)
+
+    agents_response = client.get(
+        "/api/v1/admin/agents",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert agents_response.status_code == 200
+    agent_id = next(item for item in agents_response.json() if item["name"] == "site-a-agent-2")["id"]
+
+    agent_update = client.patch(
+        f"/api/v1/admin/agents/{agent_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"name": "site-a-agent-renamed", "site": "site-b", "active": False},
+    )
+    assert agent_update.status_code == 200
+    assert agent_update.json()["name"] == "site-a-agent-renamed"
+    assert agent_update.json()["site"] == "site-b"
+    assert agent_update.json()["active"] is False
+
+    reactivate_agent = client.patch(
+        f"/api/v1/admin/agents/{agent_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"active": True},
+    )
+    assert reactivate_agent.status_code == 200
+
+    server_update = client.patch(
+        f"/api/v1/admin/servers/{server_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"name": "server-renamed", "site": "site-b", "host": "10.0.0.11", "port": 2222},
+    )
+    assert server_update.status_code == 200
+    server_payload = server_update.json()
+    assert server_payload["name"] == "server-renamed"
+    assert server_payload["host"] == "10.0.0.11"
+    assert server_payload["port"] == 2222
+
+    credential_update = client.patch(
+        f"/api/v1/admin/credentials/{credential_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+        json={"managed_account": "svc_renamed", "password": "UpdatedPassword!3"},
+    )
+    assert credential_update.status_code == 200
+    credential_payload = credential_update.json()
+    assert credential_payload["managed_account"] == "svc_renamed"
+    assert credential_payload["version"] == 2
+
+    delete_credential = client.delete(
+        f"/api/v1/admin/credentials/{credential_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert delete_credential.status_code == 204
+
+    delete_server = client.delete(
+        f"/api/v1/admin/servers/{server_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert delete_server.status_code == 204
+
+    delete_agent = client.delete(
+        f"/api/v1/admin/agents/{agent_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert delete_agent.status_code == 204

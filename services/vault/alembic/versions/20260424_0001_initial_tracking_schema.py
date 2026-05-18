@@ -18,9 +18,9 @@ branch_labels = None
 depends_on = None
 
 
-user_role_enum = sa.Enum("ADMIN", "ENGINEER", "AUDITOR", name="userrole")
+user_role_enum = sa.Enum("ADMIN", "ENGINEER", name="userrole")
 server_os_enum = sa.Enum("UNIX", "WINDOWS", name="serveros")
-access_status_enum = sa.Enum("PENDING", "APPROVED", "DENIED", "FULFILLED", "EXPIRED", name="accessstatus")
+
 sync_source_enum = sa.Enum("ADMIN", "AGENT", name="syncsource")
 
 
@@ -100,27 +100,7 @@ def upgrade() -> None:
     op.create_index(op.f("ix_credentials_managed_account"), "credentials", ["managed_account"], unique=False)
     op.create_index(op.f("ix_credentials_server_id"), "credentials", ["server_id"], unique=False)
 
-    op.create_table(
-        "access_requests",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("requester_id", sa.Integer(), nullable=False),
-        sa.Column("credential_id", sa.String(length=36), nullable=False),
-        sa.Column("status", access_status_enum, nullable=False, server_default="PENDING"),
-        sa.Column("reason", sa.Text(), nullable=False),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("approved_by", sa.Integer(), nullable=True),
-        sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("delivery_token_hash", sa.String(length=64), nullable=True),
-        sa.Column("revealed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["approved_by"], ["users.id"]),
-        sa.ForeignKeyConstraint(["credential_id"], ["credentials.id"]),
-        sa.ForeignKeyConstraint(["requester_id"], ["users.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(op.f("ix_access_requests_credential_id"), "access_requests", ["credential_id"], unique=False)
-    op.create_index(op.f("ix_access_requests_requester_id"), "access_requests", ["requester_id"], unique=False)
-    op.create_index(op.f("ix_access_requests_status"), "access_requests", ["status"], unique=False)
+    
 
     op.create_table(
         "audit_logs",

@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="dev-secret-change-me", alias="JWT_SECRET")
     jwt_exp_minutes: int = Field(default=60, alias="JWT_EXP_MINUTES")
 
+    direct_reveal_minutes: int = Field(default=5, alias="DIRECT_REVEAL_MINUTES")
+
     vault_master_key: str = Field(
         default="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
         alias="VAULT_MASTER_KEY",
