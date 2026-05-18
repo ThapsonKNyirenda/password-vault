@@ -95,6 +95,20 @@ function formatAuditValue(value: unknown): string {
     return String(value);
 }
 
+function auditActorLabel(log: { actor_type: string; actor_id: string }, users: User[], agents: Agent[]): string {
+    if (log.actor_type === "user") {
+        const user = users.find((item) => String(item.id) === String(log.actor_id));
+        return user?.username ?? `Unknown user (${log.actor_id})`;
+    }
+
+    if (log.actor_type === "agent") {
+        const agent = agents.find((item) => String(item.id) === String(log.actor_id));
+        return agent?.name ?? `Unknown agent (${log.actor_id})`;
+    }
+
+    return log.actor_id;
+}
+
 export default function AdminPage(): JSX.Element {
     const router = useRouter();
     const session = useMemo(() => getSession(), []);
@@ -176,6 +190,7 @@ export default function AdminPage(): JSX.Element {
         filtered = filtered.filter(log =>
             log.action.toLowerCase().includes(term) ||
             log.actor_type.toLowerCase().includes(term) ||
+            auditActorLabel(log, users, agents).toLowerCase().includes(term) ||
             log.resource_type.toLowerCase().includes(term) ||
             JSON.stringify(log.details ?? {}).toLowerCase().includes(term)
         );
@@ -190,7 +205,7 @@ export default function AdminPage(): JSX.Element {
             });
         }
         return filtered;
-    }, [auditLogs, searchTerm, sortConfig]);
+    }, [auditLogs, searchTerm, sortConfig, users, agents]);
 
     const filteredCredentials = useMemo(() => {
         let filtered = credentials;
@@ -951,6 +966,7 @@ export default function AdminPage(): JSX.Element {
                                             filteredAuditLogs.map(log => {
                                                 const request = auditRequestDetails(log);
                                                 const detailEntries = auditDetailEntries(log.details || {});
+                                                const actorLabel = auditActorLabel(log, users, agents);
 
                                                 return (
                                                     <TableRow key={log.id}>
@@ -959,7 +975,7 @@ export default function AdminPage(): JSX.Element {
                                                         </TableCell>
                                                         <TableCell>
                                                             <Badge variant="outline">{log.actor_type}</Badge>
-                                                            <span className="ml-2 text-sm">{log.actor_id}</span>
+                                                            <span className="ml-2 text-sm">{actorLabel}</span>
                                                         </TableCell>
                                                         <TableCell>
                                                             <Badge variant="secondary">{log.action}</Badge>

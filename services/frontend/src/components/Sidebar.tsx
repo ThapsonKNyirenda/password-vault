@@ -61,7 +61,7 @@ export function Sidebar({ activeTab, tabs, onTabChange }: SidebarProps): JSX.Ele
                 </div>
 
                 <nav className="sidebar-nav">
-                    <span className="sidebar-section-label">Navigation</span>
+                    {/* <span className="sidebar-section-label">Navigation</span> */}
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}

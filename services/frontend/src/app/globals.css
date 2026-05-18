@@ -201,13 +201,13 @@
   .sidebar-logo {
     display: flex;
     align-items: center;
-    gap: 0.875rem;
+    gap: 0.5rem;
     padding: 1.75rem 1.5rem 1.5rem;
     border-bottom: 1px solid var(--border-vault);
   }
 
   .sidebar-logo-mark {
-    width: 42px; height: 42px;
+    width: 58px; height: 58px;
     border-radius: var(--radius-sm);
     background: transparent;
     display: grid; place-items: center;
@@ -218,8 +218,8 @@
   }
 
   .sidebar-logo-mark img {
-    width: 36px;
-    height: 36px;
+    width: 52px;
+    height: 52px;
     object-fit: contain;
   }
 
@@ -230,7 +230,7 @@
 
   .sidebar-logo-text strong {
     display: block;
-    font-size: 1rem;
+    font-size: 1.08rem;
     font-weight: 700;
     color: var(--text);
     line-height: 1.05;
@@ -238,7 +238,7 @@
 
   .sidebar-logo-text span {
     display: block;
-    font-size: 0.82rem;
+    font-size: 0.86rem;
     font-weight: 700;
     color: var(--text-muted);
     line-height: 1.15;
@@ -281,37 +281,16 @@
     overflow: hidden;
   }
 
-  .sidebar-link::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 0;
-    background: var(--accent-vault);
-    border-radius: 0 2px 2px 0;
-    transition: var(--transition-base);
-  }
-
   .sidebar-link:hover {
     color: var(--text);
     background: var(--surface2);
     border-color: var(--border-vault);
   }
 
-  .sidebar-link:hover::before {
-    height: 40%;
-  }
-
   .sidebar-link.active {
     color: var(--accent-vault);
     background: var(--accent-dim);
     border-color: var(--accent-vault);
-  }
-
-  .sidebar-link.active::before {
-    height: 70%;
   }
 
   .sidebar-link.active .sidebar-link-icon {
