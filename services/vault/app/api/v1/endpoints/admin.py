@@ -344,12 +344,12 @@ def create_server(
 
     server = TargetServer(
         name=payload.name,
-        site=payload.site,
+        site=agent.site,
         agent_id=payload.agent_id,
         os_type=payload.os_type,
         host=payload.host,
         port=payload.port,
-        connection_profile=payload.connection_profile,
+        connection_profile="password",
     )
     db.add(server)
     db.flush()
@@ -396,16 +396,17 @@ def update_server(
         details["name"] = {"from": server.name, "to": payload.name}
         server.name = payload.name
 
-    if payload.site is not None and payload.site != server.site:
-        details["site"] = {"from": server.site, "to": payload.site}
-        server.site = payload.site
+    agent = db.get(Agent, payload.agent_id) if payload.agent_id is not None else db.get(Agent, server.agent_id)
+    if agent is None or not agent.active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Agent not found or inactive")
 
     if payload.agent_id is not None and payload.agent_id != server.agent_id:
-        agent = db.get(Agent, payload.agent_id)
-        if agent is None or not agent.active:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Agent not found or inactive")
         details["agent_id"] = {"from": server.agent_id, "to": payload.agent_id}
         server.agent_id = payload.agent_id
+
+    if agent.site != server.site:
+        details["site"] = {"from": server.site, "to": agent.site}
+        server.site = agent.site
 
     if payload.os_type is not None and payload.os_type != server.os_type:
         details["os_type"] = {"from": server.os_type.value, "to": payload.os_type.value}
@@ -419,9 +420,9 @@ def update_server(
         details["port"] = {"from": server.port, "to": payload.port}
         server.port = payload.port
 
-    if payload.connection_profile is not None and payload.connection_profile != server.connection_profile:
-        details["connection_profile"] = {"from": server.connection_profile, "to": payload.connection_profile}
-        server.connection_profile = payload.connection_profile
+    if server.connection_profile != "password":
+        details["connection_profile"] = {"from": server.connection_profile, "to": "password"}
+        server.connection_profile = "password"
 
     if not details:
         return server

@@ -68,12 +68,12 @@ class AgentCreateResponse(BaseModel):
 
 class TargetServerCreate(BaseModel):
     name: str
-    site: str
+    site: str | None = None
     agent_id: str
     os_type: ServerOS
     host: str
     port: int
-    connection_profile: str = "default"
+    connection_profile: str = "password"
 
 
 class TargetServerUpdate(BaseModel):

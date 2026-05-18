@@ -447,19 +447,17 @@ export default function AdminPage(): JSX.Element {
             confirmLabel: "Create Server",
             fields: [
                 { name: "name", label: "Server Name", type: "text", required: true },
-                { name: "site", label: "Site", type: "text", required: true },
                 { name: "agent_id", label: "Agent", type: "select", required: true, options: agentOptions },
                 { name: "os_type", label: "OS Type", type: "select", required: true, options: [{ label: "UNIX", value: "unix" }, { label: "Windows", value: "windows" }] },
                 { name: "host", label: "Host", type: "text", required: true },
-                { name: "port", label: "Port", type: "number", defaultValue: "22" },
-                { name: "connection_profile", label: "Connection Profile", type: "select", defaultValue: "default", options: [{ label: "Default", value: "default" }, { label: "SSH Key", value: "ssh_key" }, { label: "Password", value: "password" }] }
+                { name: "port", label: "Port", type: "number", defaultValue: "22" }
             ],
             onConfirm: async (values) => {
                 try {
                     await apiRequest("/admin/servers", {
                         method: "POST",
                         token: session.token,
-                        body: JSON.stringify({ ...values, port: parseInt(values.port) })
+                        body: JSON.stringify({ ...values, port: parseInt(values.port, 10), connection_profile: "password" })
                     });
                     addToast("Server created", "success");
                     await loadServers();
@@ -568,22 +566,19 @@ export default function AdminPage(): JSX.Element {
             confirmLabel: "Save Changes",
             fields: [
                 { name: "name", label: "Server Name", type: "text", required: true, defaultValue: server.name },
-                { name: "site", label: "Site", type: "text", required: true, defaultValue: server.site },
                 { name: "agent_id", label: "Agent", type: "select", required: true, defaultValue: server.agent_id, options: agentOptions },
                 { name: "os_type", label: "OS Type", type: "select", required: true, defaultValue: server.os_type, options: [{ label: "UNIX", value: "unix" }, { label: "Windows", value: "windows" }] },
                 { name: "host", label: "Host", type: "text", required: true, defaultValue: server.host },
-                { name: "port", label: "Port", type: "number", defaultValue: String(server.port) },
-                { name: "connection_profile", label: "Connection Profile", type: "select", defaultValue: server.connection_profile, options: [{ label: "Default", value: "default" }, { label: "SSH Key", value: "ssh_key" }, { label: "Password", value: "password" }] }
+                { name: "port", label: "Port", type: "number", defaultValue: String(server.port) }
             ],
             onConfirm: async (values) => {
                 const payload: TargetServerUpdatePayload = {
                     name: values.name,
-                    site: values.site,
                     agent_id: values.agent_id,
                     os_type: values.os_type as TargetServer["os_type"],
                     host: values.host,
                     port: parseInt(values.port, 10),
-                    connection_profile: values.connection_profile
+                    connection_profile: "password"
                 };
                 try {
                     await apiRequest(`/admin/servers/${server.id}`, {
