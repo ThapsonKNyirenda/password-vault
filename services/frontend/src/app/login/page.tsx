@@ -82,7 +82,7 @@ export default function LoginPage(): JSX.Element {
                     </div>
 
                     <h1 className="login-heading">Welcome back</h1>
-                    <p className="login-sub">Sign in to manage credentials and access workflows.</p>
+                    <p className="login-sub">Sign in to manage server credentials with ease.</p>
 
                     <form
                         className="form-stack"

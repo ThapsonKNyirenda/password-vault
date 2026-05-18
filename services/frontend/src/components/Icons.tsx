@@ -240,6 +240,14 @@ export function IconChevronRight({ className, ...props }: SVGProps<SVGSVGElement
     );
 }
 
+export function IconChevronDown({ className, ...props }: SVGProps<SVGSVGElement>): JSX.Element {
+    return (
+        <svg {...baseProps} className={combineClassName("icon", className)} {...props}>
+            <path d="m6 9 6 6 6-6" />
+        </svg>
+    );
+}
+
 export function IconInbox({ className, ...props }: SVGProps<SVGSVGElement>): JSX.Element {
     return (
         <svg {...baseProps} className={combineClassName("icon", className)} {...props}>
