@@ -1,9 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-import { IconLock, IconVaultPrism } from "../../components/Icons";
+import { IconEye, IconLock } from "../../components/Icons";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { apiRequest } from "../../lib/api";
 import { getSession, setSession } from "../../lib/auth";
@@ -17,6 +18,7 @@ export default function LoginPage(): JSX.Element {
     const [messageType, setMessageType] = useState<"" | "error">("");
     const [loading, setLoading] = useState(false);
     const [showValidation, setShowValidation] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         const session = getSession();
@@ -75,11 +77,7 @@ export default function LoginPage(): JSX.Element {
                 <div className="login-box">
                     <div className="login-logo">
                         <div className="login-logo-mark">
-                            <IconVaultPrism />
-                        </div>
-                        <div className="login-logo-text">
-                            <small>Prism Vault</small>
-                            <strong>Access Fabric</strong>
+                            <Image src="/brand/mitra-logo-full.svg" alt="Mitra Systems" width={190} height={80} priority />
                         </div>
                     </div>
 
@@ -99,25 +97,40 @@ export default function LoginPage(): JSX.Element {
                                 value={username}
                                 autoComplete="username"
                                 placeholder="Username"
-                                onChange={(e) => setUsername(e.target.value)}
+                                onChange={(e) => {
+                                    setUsername(e.target.value);
+                                    if (showValidation) setShowValidation(false);
+                                }}
                                 required
                             />
                         </label>
                         <label htmlFor="login-password">
                             Password
-                            <input
-                                id="login-password"
-                                type="password"
-                                value={password}
-                                autoComplete="current-password"
-                                placeholder="Password"
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
+                            <span className="password-field">
+                                <input
+                                    id="login-password"
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    autoComplete="current-password"
+                                    placeholder="Password"
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        if (showValidation) setShowValidation(false);
+                                    }}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="password-toggle"
+                                    onClick={() => setShowPassword((current) => !current)}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    <IconEye className="icon-sm" />
+                                </button>
+                            </span>
                         </label>
                         <button
                             className="btn-primary"
-                            style={{ width: "100%", justifyContent: "center", padding: "0.7rem 1rem", marginTop: "0.25rem" }}
                             type="submit"
                             disabled={loading}
                         >
@@ -127,7 +140,7 @@ export default function LoginPage(): JSX.Element {
                     </form>
 
                     {message ? (
-                        <div className={`toast ${messageType}`} style={{ marginTop: "1rem" }}>
+                        <div className={`toast ${messageType}`} role={messageType === "error" ? "alert" : "status"}>
                             {message}
                         </div>
                     ) : null}

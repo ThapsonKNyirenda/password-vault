@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
 import { clearSession, getSession } from "../lib/auth";
-import { IconLogout, IconShield, IconUser } from "./Icons";
+import { IconLogout, IconUser } from "./Icons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,11 +23,13 @@ export function AppHeader(): JSX.Element {
         <header className="topbar">
             <div className="brand">
                 <div className="brand-mark">
-                    <IconShield />
+                    <Image src="/brand/mitra-logo-mark.svg" alt="Mitra" width={34} height={34} />
                 </div>
                 <div>
-                    <small>Vault + Agent</small>
-                    <h1>Credential Control Plane</h1>
+                    <h1>
+                        <span>Mitra</span>
+                        <span>Password Vault</span>
+                    </h1>
                 </div>
             </div>
             <div className="user-controls">

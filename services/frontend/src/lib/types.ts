@@ -41,6 +41,18 @@ export interface RevealCredentialResponse {
   password: string;
 }
 
+export interface CredentialSshStatusResponse {
+  credential_id: string;
+  server_name: string;
+  host: string;
+  port: number;
+  managed_account: string;
+  ok: boolean;
+  status: string;
+  message: string;
+  checked_at: string;
+}
+
 export interface RevealPolicy {
   minutes: number;
 }

@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import router as api_v1_router
 from app.bootstrap.seed import ensure_seed_identities
 from app.core.config import get_settings
+from app.services.audit_service import reset_audit_request_context, set_audit_request_context
 
 
 settings = get_settings()
@@ -22,6 +23,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def audit_request_context(request: Request, call_next):
+    token = set_audit_request_context(request)
+    try:
+        return await call_next(request)
+    finally:
+        reset_audit_request_context(token)
+
 
 api_prefix = "/api/v1"
 app.include_router(api_v1_router, prefix=api_prefix)

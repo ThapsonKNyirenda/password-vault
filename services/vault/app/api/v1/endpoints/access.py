@@ -11,11 +11,13 @@ from app.db.session import get_db
 from app.domain.models import Credential, SystemSetting, TargetServer, User, UserRole, utcnow
 from app.domain.schemas import (
     CredentialCatalogItem,
+    CredentialSshStatusResponse,
     DirectRevealRequest,
     RevealCredentialResponse,
     RevealPolicy,
 )
 from app.services.audit_service import record_audit
+from app.services.ssh_status_service import check_ssh_credential, ssh_status_checked_at
 from app.services.tracking_service import decrypt_credential
 
 
@@ -125,13 +127,59 @@ def direct_reveal_credential(
     )
 
 
+@router.post("/credentials/{credential_id}/ssh-status", response_model=CredentialSshStatusResponse)
+def check_credential_ssh_status(
+    credential_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ENGINEER)),
+) -> CredentialSshStatusResponse:
+    credential = db.get(Credential, credential_id)
+    if credential is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Credential not found")
+
+    server = db.get(TargetServer, credential.server_id)
+    if server is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Server not found")
+
+    result = check_ssh_credential(server=server, credential=credential)
+    checked_at = ssh_status_checked_at()
+
+    record_audit(
+        db,
+        actor_type="user",
+        actor_id=str(current_user.id),
+        action="check_ssh_status",
+        resource_type="credential",
+        resource_id=credential.id,
+        details={
+            "server_id": server.id,
+            "server_name": server.name,
+            "managed_account": credential.managed_account,
+            "ok": result.ok,
+            "status": result.status,
+        },
+    )
+    db.commit()
+
+    return CredentialSshStatusResponse(
+        credential_id=credential.id,
+        server_name=server.name,
+        host=server.host,
+        port=server.port,
+        managed_account=credential.managed_account,
+        ok=result.ok,
+        status=result.status,
+        message=result.message,
+        checked_at=checked_at,
+    )
+
+
 @router.get("/reveal-policy", response_model=RevealPolicy)
 def get_reveal_policy(
     db: Session = Depends(get_db),
     _: User = Depends(require_roles(UserRole.ADMIN, UserRole.ENGINEER)),
 ) -> RevealPolicy:
     return RevealPolicy(minutes=get_direct_reveal_minutes(db))
-
 
 
 

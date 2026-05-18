@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect } from "react";
 
-import { IconMenu, IconVaultPrism, IconX } from "./Icons";
+import { IconMenu, IconX } from "./Icons";
 
 interface SidebarProps {
     activeTab: string;
@@ -43,11 +44,11 @@ export function Sidebar({ activeTab, tabs, onTabChange }: SidebarProps): JSX.Ele
             <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
                 <div className="sidebar-logo">
                     <div className="sidebar-logo-mark">
-                        <IconVaultPrism className="icon-md" />
+                        <Image src="/brand/mitra-logo-mark.svg" alt="Mitra" width={36} height={36} />
                     </div>
                     <div className="sidebar-logo-text">
-                        <small>Prism Vault</small>
-                        <strong>Access Fabric</strong>
+                        <strong>Mitra</strong>
+                        <span>Password Vault</span>
                     </div>
                     <button
                         type="button"

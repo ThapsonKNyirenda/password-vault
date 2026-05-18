@@ -19,14 +19,14 @@ import {
 import { Badge } from "../../components/ui/badge";
 import {
     IconEye, IconKey, IconRefresh, IconClock,
-    IconCheckCircle, IconServer, IconLock
+    IconCheckCircle, IconServer, IconLock, IconActivity
 } from "../../components/Icons";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
 import { apiRequest } from "../../lib/api";
 import { getSession } from "../../lib/auth";
 import { formatDate } from "../../lib/format";
-import type { AccessRequest, CredentialCatalogItem, RevealCredentialResponse } from "../../lib/types";
+import type { CredentialCatalogItem, CredentialSshStatusResponse, RevealCredentialResponse } from "../../lib/types";
 
 interface DialogState {
     title: string;
@@ -62,6 +62,8 @@ export default function EngineerPage(): JSX.Element {
     const [countdown, setCountdown] = useState("");
     const [dialog, setDialog] = useState<DialogState | null>(null);
     const [dialogBusy, setDialogBusy] = useState(false);
+    const [sshStatuses, setSshStatuses] = useState<Record<string, CredentialSshStatusResponse>>({});
+    const [checkingSshId, setCheckingSshId] = useState<string | null>(null);
 
     const loadCatalog = useCallback(async (): Promise<void> => {
         if (!session) return;
@@ -137,6 +139,27 @@ export default function EngineerPage(): JSX.Element {
         });
     }
 
+    async function testSshStatus(item: CredentialCatalogItem): Promise<void> {
+        if (!session) return;
+        setCheckingSshId(item.credential_id);
+        setMessage(`Testing SSH status for ${item.managed_account} on ${item.server_name}...`);
+        setMessageType("");
+        try {
+            const data = await apiRequest<CredentialSshStatusResponse>(
+                `/access-requests/credentials/${item.credential_id}/ssh-status`,
+                { method: "POST", token: session.token },
+            );
+            setSshStatuses((current) => ({ ...current, [item.credential_id]: data }));
+            setMessage(data.message);
+            setMessageType(data.ok ? "success" : "error");
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : "Failed to test SSH status");
+            setMessageType("error");
+        } finally {
+            setCheckingSshId(null);
+        }
+    }
+
     if (!session) return <div className="layout" />;
 
     const revealPayload = revealData
@@ -187,6 +210,12 @@ export default function EngineerPage(): JSX.Element {
                         />
                     </div>
 
+                    {message ? (
+                        <div className={`p-4 rounded-md mb-4 text-sm ${messageType === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                            {message}
+                        </div>
+                    ) : null}
+
                     <Card>
                         <CardHeader>
                             <div className="flex items-center justify-between">
@@ -217,13 +246,14 @@ export default function EngineerPage(): JSX.Element {
                                             <TableHead>Version</TableHead>
                                             <TableHead>Last Sync</TableHead>
                                             <TableHead>Source</TableHead>
+                                            <TableHead>SSH Status</TableHead>
                                             <TableHead className="text-right">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {catalog.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
+                                                <TableCell colSpan={9} className="text-center h-24 text-muted-foreground">
                                                     No tracked credentials available.
                                                 </TableCell>
                                             </TableRow>
@@ -242,10 +272,30 @@ export default function EngineerPage(): JSX.Element {
                                                 <TableCell>
                                                     <Badge variant="default">{item.last_sync_source}</Badge>
                                                 </TableCell>
+                                                <TableCell>
+                                                    {sshStatuses[item.credential_id] ? (
+                                                        <Badge variant={sshStatuses[item.credential_id].ok ? "default" : "destructive"}>
+                                                            {sshStatuses[item.credential_id].status.replaceAll("_", " ")}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">Not tested</span>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button size="sm" onClick={() => openDirectReveal(item)}>
-                                                        <IconEye className="w-4 h-4 mr-2" /> Reveal
-                                                    </Button>
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => testSshStatus(item)}
+                                                            disabled={checkingSshId === item.credential_id}
+                                                        >
+                                                            <IconActivity className="w-4 h-4 mr-2" />
+                                                            {checkingSshId === item.credential_id ? "Testing..." : "Test SSH"}
+                                                        </Button>
+                                                        <Button size="sm" onClick={() => openDirectReveal(item)}>
+                                                            <IconEye className="w-4 h-4 mr-2" /> Reveal
+                                                        </Button>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -275,7 +325,6 @@ export default function EngineerPage(): JSX.Element {
                                         </p>
                                     </div>
                                 )}
-                                {message && <div className={`p-4 rounded-md mt-4 text-sm ${messageType === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>{message}</div>}
                             </CardContent>
                         )}
                     </Card>

@@ -38,6 +38,7 @@ import {
     IconCheckCircle,
     IconExclamation,
     IconAlert,
+    IconActivity,
 } from "../../components/Icons";
 import { StatCard } from "../../components/StatCard";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -47,6 +48,7 @@ import { formatDate } from "../../lib/format";
 import type {
     Agent,
     Credential,
+    CredentialSshStatusResponse,
     RevealCredentialResponse,
     TargetServer,
     User,
@@ -76,6 +78,23 @@ const TABS = [
     { id: "logs", label: "System Logs", icon: <IconAlert className="sidebar-link-icon" /> },
 ];
 
+function auditRequestDetails(log: { details?: Record<string, unknown> }): Record<string, unknown> {
+    const request = log.details?.request;
+    return request && typeof request === "object" && !Array.isArray(request)
+        ? request as Record<string, unknown>
+        : {};
+}
+
+function auditDetailEntries(details: Record<string, unknown>): Array<[string, unknown]> {
+    return Object.entries(details).filter(([key]) => key !== "request");
+}
+
+function formatAuditValue(value: unknown): string {
+    if (value === null || value === undefined || value === "") return "-";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+}
+
 export default function AdminPage(): JSX.Element {
     const router = useRouter();
     const session = useMemo(() => getSession(), []);
@@ -95,6 +114,8 @@ export default function AdminPage(): JSX.Element {
     const [dialogBusy, setDialogBusy] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+    const [sshStatuses, setSshStatuses] = useState<Record<string, CredentialSshStatusResponse>>({});
+    const [checkingSshId, setCheckingSshId] = useState<string | null>(null);
 
     const loadAuditLogs = useCallback(async (): Promise<void> => {
         if (!session) return;
@@ -156,7 +177,7 @@ export default function AdminPage(): JSX.Element {
             log.action.toLowerCase().includes(term) ||
             log.actor_type.toLowerCase().includes(term) ||
             log.resource_type.toLowerCase().includes(term) ||
-            log.details?.toString().toLowerCase().includes(term)
+            JSON.stringify(log.details ?? {}).toLowerCase().includes(term)
         );
 
         if (sortConfig && sortConfig.key === "logs") {
@@ -262,6 +283,28 @@ export default function AdminPage(): JSX.Element {
                 }
             }
         });
+    }
+
+    async function testSshStatus(credential: Credential): Promise<void> {
+        if (!session) return;
+        const server = servers.find(s => s.id === credential.server_id);
+        setCheckingSshId(credential.id);
+        setMessage(`Testing SSH status for ${credential.managed_account} on ${server?.name ?? credential.server_id}...`);
+        setMessageType("");
+        try {
+            const data = await apiRequest<CredentialSshStatusResponse>(
+                `/access-requests/credentials/${credential.id}/ssh-status`,
+                { method: "POST", token: session.token },
+            );
+            setSshStatuses((current) => ({ ...current, [credential.id]: data }));
+            setMessage(data.message);
+            setMessageType(data.ok ? "success" : "error");
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : "Failed to test SSH status");
+            setMessageType("error");
+        } finally {
+            setCheckingSshId(null);
+        }
     }
 
     function openEditUserDialog(user: User): void {
@@ -661,13 +704,14 @@ export default function AdminPage(): JSX.Element {
                                                 <TableHead>Version</TableHead>
                                                 <TableHead>Last Sync</TableHead>
                                                 <TableHead>Sync Source</TableHead>
+                                                <TableHead>SSH Status</TableHead>
                                                 <TableHead className="text-right">Actions</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {credentials.length === 0 ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                                                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                                                         No credentials configured. Add your first credential to get started.
                                                     </TableCell>
                                                 </TableRow>
@@ -690,10 +734,30 @@ export default function AdminPage(): JSX.Element {
                                                             <TableCell>
                                                                 <Badge variant="secondary">{c.last_sync_source}</Badge>
                                                             </TableCell>
+                                                            <TableCell>
+                                                                {sshStatuses[c.id] ? (
+                                                                    <Badge variant={sshStatuses[c.id].ok ? "default" : "destructive"}>
+                                                                        {sshStatuses[c.id].status.replaceAll("_", " ")}
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <span className="text-xs text-muted-foreground">Not tested</span>
+                                                                )}
+                                                            </TableCell>
                                                             <TableCell className="text-right">
-                                                                <Button variant="ghost" size="icon" onClick={handleReveal}>
-                                                                    <IconEye className="w-4 h-4" />
-                                                                </Button>
+                                                                <div className="flex justify-end gap-2">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => testSshStatus(c)}
+                                                                        disabled={checkingSshId === c.id}
+                                                                        title="Test SSH status"
+                                                                    >
+                                                                        <IconActivity className="w-4 h-4" />
+                                                                    </Button>
+                                                                    <Button variant="ghost" size="icon" onClick={handleReveal} title="Reveal password">
+                                                                        <IconEye className="w-4 h-4" />
+                                                                    </Button>
+                                                                </div>
                                                             </TableCell>
                                                         </TableRow>
                                                     );
@@ -849,7 +913,7 @@ export default function AdminPage(): JSX.Element {
                                     <SearchInput
                                         value={searchTerm}
                                         onChange={setSearchTerm}
-                                        placeholder="Search logs by action, actor, or resource..."
+                                        placeholder="Search logs by action, actor, resource, IP, or browser..."
                                     />
                                 </div>
                                 <Table>
@@ -871,43 +935,63 @@ export default function AdminPage(): JSX.Element {
                                             <TableHead>Actor</TableHead>
                                             <TableHead>Action</TableHead>
                                             <TableHead>Resource</TableHead>
+                                            <TableHead>IP Address</TableHead>
+                                            <TableHead>Browser</TableHead>
                                             <TableHead>Details</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredAuditLogs.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                                <TableCell colSpan={7} className="text-center text-muted-foreground">
                                                     {searchTerm ? "No logs found matching your search." : "No audit logs available."}
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            filteredAuditLogs.map(log => (
-                                                <TableRow key={log.id}>
-                                                    <TableCell className="text-xs text-muted-foreground">
-                                                        {formatDate(log.created_at)}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="outline">{log.actor_type}</Badge>
-                                                        <span className="ml-2 text-sm">{log.actor_id}</span>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="secondary">{log.action}</Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className="text-sm">{log.resource_type}</span>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="text-xs text-muted-foreground">
-                                                            {Object.entries(log.details || {}).map(([key, value]) => (
-                                                                <div key={key}>
-                                                                    <strong>{key}:</strong> {String(value)}
+                                            filteredAuditLogs.map(log => {
+                                                const request = auditRequestDetails(log);
+                                                const detailEntries = auditDetailEntries(log.details || {});
+
+                                                return (
+                                                    <TableRow key={log.id}>
+                                                        <TableCell className="text-xs text-muted-foreground">
+                                                            {formatDate(log.created_at)}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline">{log.actor_type}</Badge>
+                                                            <span className="ml-2 text-sm">{log.actor_id}</span>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="secondary">{log.action}</Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <span className="text-sm">{log.resource_type}</span>
+                                                        </TableCell>
+                                                        <TableCell className="text-xs text-muted-foreground">
+                                                            {formatAuditValue(request.ip_address)}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="space-y-1 text-xs">
+                                                                <div className="font-medium text-foreground">{formatAuditValue(request.browser)}</div>
+                                                                <div className="max-w-[260px] truncate text-muted-foreground" title={formatAuditValue(request.user_agent)}>
+                                                                    {formatAuditValue(request.user_agent)}
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="space-y-1 text-xs text-muted-foreground">
+                                                                <div><strong>method:</strong> {formatAuditValue(request.method)}</div>
+                                                                <div><strong>path:</strong> {formatAuditValue(request.path)}</div>
+                                                                {detailEntries.map(([key, value]) => (
+                                                                    <div key={key}>
+                                                                        <strong>{key}:</strong> {formatAuditValue(value)}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
                                         )}
                                     </TableBody>
                                 </Table>

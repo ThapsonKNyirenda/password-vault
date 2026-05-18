@@ -12,8 +12,8 @@ const spaceGrotesk = Space_Grotesk({
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-    title: "Credential Control Plane",
-    description: "Vault + Local Agent password tracking and approved reveal workflows",
+    title: "Mitra Password Vault",
+    description: "Mitra Password Vault server credential tracking and access workflows",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }): JSX.Element {

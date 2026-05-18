@@ -131,6 +131,18 @@ class RevealCredentialResponse(BaseModel):
     password: str
 
 
+class CredentialSshStatusResponse(BaseModel):
+    credential_id: str
+    server_name: str
+    host: str
+    port: int
+    managed_account: str
+    ok: bool
+    status: str
+    message: str
+    checked_at: datetime
+
+
 class RevealPolicy(BaseModel):
     minutes: int = Field(default=5, ge=1, le=120)
 

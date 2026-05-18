@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 861" role="img" aria-labelledby="title">
+  <title id="title">Mitra Systems logo</title>
+  <rect width="2048" height="861" fill="transparent"/>
+  <path fill="#16aee5" d="M57 43h151l207 213L622 43h148v779L622 672V249L414 463 207 253v87L57 485z"/>
+  <path fill="#aaa9a6" d="M57 609 266 400l106 106L57 821z"/>
+  <text x="825" y="617" fill="#16aee5" font-family="Arial Black, Arial, sans-serif" font-size="570" font-weight="900" letter-spacing="-34">mitra</text>
+  <text x="823" y="784" fill="#aaa9a6" font-family="Arial, sans-serif" font-size="203" font-weight="700" letter-spacing="54">SYSTEMS</text>
+</svg>
